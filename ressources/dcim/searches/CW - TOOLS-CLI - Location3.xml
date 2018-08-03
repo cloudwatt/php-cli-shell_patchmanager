@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<search configurations="false" domain="com.patchmanager.shared.beans.Location">
+  <name>CW - TOOLS-CLI - Location3</name>
+  <expression>(0|1)&amp;2</expression>
+  <constraints>
+    <constraint alias="1" wildcard="true" wildcard-id="locationid">
+      <field>location.parent.entityId</field>
+      <type>NUMBER</type>
+      <comparison>EQUALS</comparison>
+      <comparison-configuration/>
+    </constraint>
+    <constraint alias="2" wildcard="true" wildcard-id="locationid">
+      <field>location.ancestors.entityId</field>
+      <type>NUMBER</type>
+      <comparison>EQUALS</comparison>
+      <comparison-configuration>at-least-one</comparison-configuration>
+    </constraint>
+    <constraint alias="3" wildcard="true" wildcard-id="label">
+      <field>location.name</field>
+      <type>STRING</type>
+      <comparison>MATCHES</comparison>
+      <comparison-configuration/>
+    </constraint>
+  </constraints>
+</search>

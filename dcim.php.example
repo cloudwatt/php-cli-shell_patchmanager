@@ -1,0 +1,11 @@
+<?php
+	include_once('services/dcim.php');
+
+	/**
+	  * Change [PM_SERVER_KEY] with the key of your PatchManager server in configuration file
+	  * Example: $MAIN = new Service_Dcim(__DIR__ . '/config.json', 'myPmKey');
+	  */
+	$MAIN = new Service_Dcim(__DIR__ . '/config.json', '[PM_SERVER_KEY]');
+
+	echo "\r\n";
+	exit();

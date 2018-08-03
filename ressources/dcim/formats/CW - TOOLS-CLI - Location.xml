@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<data-format aggregates-only="false" domain="com.patchmanager.shared.beans.Location" filtering="NO_FILTERING" ignore-duplicates="false" narrow="false">
+  <name>CW - TOOLS-CLI - Location</name>
+  <description>INFTSK-5007</description>
+  <fields>
+    <field aggregate="false" format="{1}" header="Entity ID">
+      <expression>location.entityId</expression>
+    </field>
+    <field aggregate="false" format="{1}" header="Name">
+      <expression>location.name</expression>
+    </field>
+    <field aggregate="false" format="{1}" header="Path">
+      <expression>location.parent</expression>
+      <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+      <renderer-configuration>
+        <value key="[0]expression">{qname}</value>
+      </renderer-configuration>
+    </field>
+  </fields>
+  <ordering-fields>
+    <ordering-field order-ascending="true">
+      <expression>location.template</expression>
+      <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+      <renderer-configuration>
+        <value key="expression">{name}</value>
+      </renderer-configuration>
+    </ordering-field>
+    <ordering-field order-ascending="true">
+      <expression>location.parent</expression>
+      <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+      <renderer-configuration>
+        <value key="expression">{qname}</value>
+      </renderer-configuration>
+    </ordering-field>
+    <ordering-field order-ascending="true">
+      <expression>location.name</expression>
+    </ordering-field>
+  </ordering-fields>
+</data-format>

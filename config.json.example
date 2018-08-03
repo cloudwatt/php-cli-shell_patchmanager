@@ -1,0 +1,23 @@
+{
+	"DEFAULT": {
+		"sys": {
+			"browserCmd": "xdg-open"
+		}	
+	},
+
+	"DCIM": {
+		"servers": {
+			"[PM_SERVER_KEY]": "https://myPatchManagerServerAddress.ext",
+			"myPmKey": "https://patchmanager.com/pmserver/"
+		},
+
+		"userAttrs": {
+			"default": {
+				"prefix": "",
+				"labels": {
+					"serialNumber": "[PM_ATTR_SN]"
+				}
+			}
+		}
+	}
+}

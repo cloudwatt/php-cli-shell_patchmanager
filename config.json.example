@@ -7,7 +7,7 @@
 
 	"DCIM": {
 		"servers": {
-			"[PM_SERVER_KEY]": "https://myPatchManagerServerAddress.ext",
+			"[DCIM_SERVER_KEY]": "https://myPatchManagerServerAddress.ext",
 			"myPmKey": "https://patchmanager.com/pmserver/"
 		},
 

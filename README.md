@@ -4,7 +4,7 @@ This repository is the addon for PHP-CLI SHELL about PATCHMANAGER service.
 You have to use base PHP-CLI SHELL project that is here: https://github.com/cloudwatt/php-cli-shell_base
 
 
-# PRE-REQUIS
+# REQUIREMENTS
 
 #### PATCHMANAGER
 * Import profiles which are in ressources/dcim
@@ -32,7 +32,7 @@ __Do not forget to install php7.1-soap__
 #### CONFIGURATION FILE
 * mv config.json.example config.json
 * vim config.json
-    * servers field contains all PatchManager server addresses which must be identified by custom key [PM_SERVER_KEY]  
+    * servers field contains all PatchManager server addresses which must be identified by custom key [DCIM_SERVER_KEY]  
 	  __server key must be unique and you will use it on next steps. You have an example in config file__
 	* userAttrs field contains all custom attributes which must be created on your PatchManager  
 	  __If you have a serial number custom attribute, change [PM_ATTR_SN] with the name of this attribute__
@@ -40,16 +40,16 @@ __Do not forget to install php7.1-soap__
 #### PHP LAUNCHER FILE
 * mv dcim.php.example patchmanager.php
 * vim patchmanager.php
-    * Change [PM_SERVER_KEY] with the key of your PatchManager server in configuration file
+    * Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file
 
 #### CREDENTIALS FILE
-/!\ For security reason, use a read only account!
+/!\ For security reason, use a read only account!  
 __*Change informations which are between []*__
 * vim credentialsFile
     * read -sr USER_PASSWORD_INPUT
-    * export DCIM_[PM_SERVER_KEY]_LOGIN=[YourLoginHere]
-    * export DCIM_[PM_SERVER_KEY]_PASSWORD=$USER_PASSWORD_INPUT  
-	  __Change [PM_SERVER_KEY] with the key of your PatchManager server in configuration file__
+    * export DCIM_[DCIM_SERVER_KEY]_LOGIN=[YourLoginHere]
+    * export DCIM_[DCIM_SERVER_KEY]_PASSWORD=$USER_PASSWORD_INPUT  
+	  __Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file__
 
 
 # EXECUTION

@@ -222,7 +222,21 @@
 				'equipment' => '_getEquipmentInfos'
 			);
 
-			return $this->_printObjectInfos($cases, $args, $fromCurrentPath);
+			$result = $this->_printObjectInfos($cases, $args, $fromCurrentPath);
+
+			if($result !== false)
+			{
+				list($status, $objectType, $infos) = $result;
+
+				if($status && $objectType === 'equipment') {
+					$this->printEquipmentExtra($infos);
+				}
+
+				return $status;
+			}
+			else {
+				return false;
+			}
 		}
 
 		public function printLocationInfos(array $args, $fromCurrentPath = true, $recursion = false)
@@ -291,20 +305,27 @@
 				if($status === false) {
 					Tools::e("Equipement introuvable", 'orange');
 				}
-				elseif(count($infos) === 1)
-				{
-					$this->_MAIN->displayWaitingMsg();
-
-					$path = $infos[0]['path'].'/'.$infos[0]['name'];
-					$objects = $this->_getObjects($path);
-					$this->_MAIN->deleteWaitingMsg();
-					$this->_printObjectsList($objects);
+				else {
+					$this->printEquipmentExtra($infos);
 				}
 
 				return true;
 			}
 
 			return false;
+		}
+
+		protected function printEquipmentExtra(array $infos)
+		{
+			if(count($infos) === 1)
+			{
+				$this->_MAIN->displayWaitingMsg();
+
+				$path = $infos[0]['path'].'/'.$infos[0]['name'];
+				$objects = $this->_getObjects($path);
+				$this->_MAIN->deleteWaitingMsg();
+				$this->_printObjectsList($objects);
+			}
 		}
 
 		protected function _getLocationInfos($location, $fromCurrentPath, $path = null, $recursion = false)

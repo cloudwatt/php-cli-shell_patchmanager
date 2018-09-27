@@ -1,7 +1,8 @@
 {
 	"DEFAULT": {
 		"sys": {
-			"browserCmd": "xdg-open"
+			"browserCmd": "xdg-open",
+			"secureShellCmd": "ssh"
 		}	
 	},
 

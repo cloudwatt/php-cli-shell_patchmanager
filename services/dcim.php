@@ -1,21 +1,21 @@
 <?php
-	include_once('abstract.php');
-	include_once('shell/dcim.php');
-	include_once(__DIR__ . '/../classes/soap.php');
-	include_once(__DIR__ . '/../dcim/abstract.php');
-	include_once(__DIR__ . '/../dcim/api/abstract.php');
-	include_once(__DIR__ . '/../dcim/api/location.php');
-	include_once(__DIR__ . '/../dcim/api/cabinet.php');
-	include_once(__DIR__ . '/../dcim/api/equipment.php');
-	include_once(__DIR__ . '/../dcim/api/equipment/port.php');
-	include_once(__DIR__ . '/../dcim/api/cable.php');
+	require_once('browser.php');
+	require_once('shell/dcim.php');
+	require_once(__DIR__ . '/../classes/soap.php');
+	require_once(__DIR__ . '/../dcim/abstract.php');
+	require_once(__DIR__ . '/../dcim/api/abstract.php');
+	require_once(__DIR__ . '/../dcim/api/location.php');
+	require_once(__DIR__ . '/../dcim/api/cabinet.php');
+	require_once(__DIR__ . '/../dcim/api/equipment.php');
+	require_once(__DIR__ . '/../dcim/api/equipment/port.php');
+	require_once(__DIR__ . '/../dcim/api/cable.php');
 
 	class DCIM extends DCIM_Abstract {}
 	class DCIM_Connector_Soap extends DCIM_Connector_Soap_Read_Abstract {}
 
 	class SHELL extends Shell_Abstract {}
 
-	class Service_Dcim extends Service_Abstract
+	class Service_Dcim extends Service_Abstract_Browser
 	{
 		const SHELL_HISTORY_FILENAME = '.dcim.history';
 
@@ -105,17 +105,16 @@
 			$this->_DCIM = $DCIM->getDcim();
 			Dcim_Api_Abstract::setDcim($this->_DCIM);
 
-			$this->_Service_Shell = new Service_Shell_Dcim($this);
+			$this->_Service_Shell = new Service_Shell_Dcim($this, $this->_SHELL);
 
 			if($autoInitialisation) {
 				$this->_init();
 			}
 		}
 
-		protected function _launchShell($welcomeMessage = true, $goodbyeMessage = true)
+		protected function _launchShell()
 		{
 			$exit = false;
-			$this->_preLauchingShell($welcomeMessage);
 
 			while(!$exit)
 			{
@@ -125,8 +124,6 @@
 				$exit = $this->_routeShellCmd($cmd, $args);
 				$this->_postRoutingShellCmd($cmd, $args);
 			}
-
-			$this->_postLauchingShell($goodbyeMessage);
 		}
 
 		protected function _routeShellCmd($cmd, array $args)
@@ -172,8 +169,8 @@
 						$jnlpUrl = $this->_DCIM->getJnlpUrl(64);
 						$status = file_put_contents($jnlp, fopen($jnlpUrl, 'r'));
 
-						if(!$status) {
-							Tools::e("Impossible de télécharger le JNLP [".$jnlpUrl."]", 'red');
+						if($status === false) {
+							$this->error("Impossible de télécharger le JNLP [".$jnlpUrl."]", 'red');
 							break;
 						}
 					}
@@ -188,10 +185,19 @@
 				}
 			}
 
-			if(isset($status) && !$status) {
-				$this->deleteWaitingMsg();
-				$msg = Tools::e($this->_manCommands[$cmd], 'red', 'normal', false, true);
-				$this->_SHELL->printMessage($msg);
+			if(isset($status))
+			{
+				$this->_lastCmdStatus = $status;
+
+				if(!$status && !$this->_isOneShotCall)
+				{
+					if(array_key_exists($cmd, $this->_manCommands)) {
+						$this->error($this->_manCommands[$cmd], 'red');
+					}
+					else {
+						$this->error("Une erreur s'est produit lors de l'exécution de cette commande", 'red');
+					}
+				}
 			}
 
 			return $exit;
@@ -208,8 +214,8 @@
 		protected function _moveToRoot()
 		{
 			if($this->_pathIds === null || $this->_pathApi === null) {
-				$this->_pathIds[] = Dcim_Api_Location::getRootLocationId();
-				$this->_pathApi[] = new Dcim_Api_Location(end($this->_pathIds));
+				$this->_pathIds[] = null;
+				$this->_pathApi[] = new Dcim_Api_Location();
 			}
 
 			return parent::_moveToRoot();

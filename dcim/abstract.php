@@ -1,7 +1,7 @@
 <?php
-	include_once(__DIR__ . '/main.php');
-	include_once(__DIR__ . '/connector/abstract.php');
-	include_once(__DIR__ . '/connector/soap.php');
+	require_once(__DIR__ . '/main.php');
+	require_once(__DIR__ . '/connector/abstract.php');
+	require_once(__DIR__ . '/connector/soap.php');
 
 	abstract class DCIM_Abstract extends DCIM_Main
 	{

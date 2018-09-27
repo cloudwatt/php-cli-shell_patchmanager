@@ -3,14 +3,14 @@
 	{
 		const OBJECT_TYPE = 'location';
 		const REPORT_NAMES = array(
+				'root' => 'CW - TOOLS-CLI - Location - Root',
 				'label' => 'CW - TOOLS-CLI - Location1',
 				'location' => 'CW - TOOLS-CLI - Location2',
 				'subLocation' => 'CW - TOOLS-CLI - Location3',
 		);
 
-		const ROOT_SITE = 'Cloudwatt';
-
 		static protected $_rootLocationId = null;
+		static protected $_rootLocationIds = null;
 
 		protected $_parentLocationId;
 		protected $_parentLocationApi;
@@ -47,21 +47,30 @@
 			{
 				if($this->_parentLocationId === null)
 				{
+					$this->_parentLocationId = false;
+
 					$path = $this->getPath();
 					$path = explode(',', $path);
 
-					$locationId = $this->getRootLocationId();
+					$selfClassName = static::class;
+					$Dcim_Api_Location = new $selfClassName();
+					$locationId = $Dcim_Api_Location->getSubLocationId($path[0]);
 
-					for($i=1; $i<count($path); $i++)
+					if($locationId !== false)
 					{
-						$locationId = $this->_DCIM->getLocationIdByParentLocationIdLocationLabel($locationId, $path[$i], false);
+						for($i=1; $i<count($path); $i++)
+						{
+							$locationId = $this->_DCIM->getLocationIdByParentLocationIdLocationLabel($locationId, $path[$i], false);
 
-						if($locationId === false) {
-							break;
+							if($locationId === false) {
+								break;
+							}
+						}
+
+						if($i === count($path)) {
+							$this->_parentLocationId = $locationId;
 						}
 					}
-
-					$this->_parentLocationId = ($i === count($path)) ? ($locationId) : (false);
 				}
 
 				return $this->_parentLocationId;
@@ -105,7 +114,7 @@
 				return $this->_DCIM->getSubLocationIds($this->getLocationId(), false);
 			}
 			else {
-				return false;
+				return $this->getRootLocationIds();
 			}
 		}
 
@@ -115,7 +124,9 @@
 				return $this->_DCIM->getLocationIdByParentLocationIdLocationLabel($this->getLocationId(), $locationLabel, false);
 			}
 			else {
-				return false;
+				$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['root']);
+				$result = $this->_getSubObjects($results, 'name', $locationLabel);
+				return (Tools::is('array', $result) && count($result) === 1) ? ($result[0]['entity_id']) : (false);
 			}
 		}
 
@@ -155,10 +166,9 @@
 		{
 			switch($method)
 			{
-				/*case 'getRootLocationId':
-					return self::getRootLocationId();*/
-				default:
+				default: {
 					throw new Exception('Method '.$method.' does not exist', E_USER_ERROR);
+				}
 			}
 		}
 
@@ -177,12 +187,41 @@
 
 		public static function getRootLocationId()
 		{
-			if(self::$_rootLocationId === null) {
-				$result = self::$_DCIM->getSiteId(self::ROOT_SITE);
-				self::$_rootLocationId = (self::$_DCIM->isValidReturn($result)) ? ($result) : (false);
+			if(self::$_rootLocationId === null)
+			{
+				$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['root']);
+
+				if(Tools::is('array', $results) && count($results) === 1) {
+					self::$_rootLocationId = $results[0]['entity_id'];
+				}
+				else {
+					throw new Exception("Unable to get root location ID", E_USER_ERROR);
+				}
 			}
 
 			return self::$_rootLocationId;
+		}
+
+		public static function getRootLocationIds()
+		{
+			if(self::$_rootLocationIds === null)
+			{
+				$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['root']);
+
+				if(Tools::is('array&&count>0', $results))
+				{
+					array_walk($results, function(&$item) {
+						$item = $item['entity_id'];
+					});
+
+					self::$_rootLocationIds = $results;
+				}
+				else {
+					throw new Exception("Unable to retreive root location IDs", E_USER_ERROR);
+				}
+			}
+
+			return self::$_rootLocationIds;
 		}
 
 		public static function searchLocations($locationLabel, $locationId = null, $recursion = false)

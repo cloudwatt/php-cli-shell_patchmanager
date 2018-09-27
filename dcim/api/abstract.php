@@ -19,7 +19,7 @@
 				$this->objectExists();
 			}
 			elseif($objectId !== null) {
-				throw new Exception("This object ID '".$objectId."' is not valid", E_USER_ERROR);
+				throw new Exception("This object ID must be an integer, '".gettype($objectId)."' is not valid", E_USER_ERROR);
 			}
 		}
 
@@ -95,6 +95,32 @@
 
 				$result = $this->_DCIM->getUserAttrById(static::OBJECT_TYPE, $this->getObjectId(), $attrName);
 				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+			}
+			else {
+				return false;
+			}
+		}
+
+		protected function _getSubObjects($objects, $fieldName, $name)
+		{
+			if($objects !== false)
+			{
+				if($name !== null)
+				{
+					$subObjects = array();
+
+					foreach($objects as $object)
+					{
+						if($object[$fieldName] === $name) {
+							$subObjects[] = $object;
+						}
+					}
+
+					return $subObjects;
+				}
+				else {
+					return $objects;
+				}
 			}
 			else {
 				return false;

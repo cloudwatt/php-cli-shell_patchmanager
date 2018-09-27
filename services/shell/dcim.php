@@ -1,7 +1,7 @@
 <?php
-	include_once('abstract.php');
+	require_once('browser.php');
 
-	class Service_Shell_Dcim extends Service_Shell_Abstract
+	class Service_Shell_Dcim extends Service_Shell_Abstract_Browser
 	{
 		protected $_OPTION_FIELDS = array(
 			'location' => array(
@@ -41,6 +41,13 @@
 			)
 		);
 
+		protected $_PRINT_TITLES = array(
+			'location' => 'LOCATIONS',
+			'cabinet' => 'CABINETS',
+			'equipment' => 'EQUIPMENTS',
+			'cable' => 'CABLES',
+		);
+
 		protected $_PRINT_FIELDS = array(
 			'location' => array(
 				'header' => '%s',
@@ -65,9 +72,13 @@
 			),
 		);
 
+		protected $_searchfromCurrentPath = true;
 
-		protected function _getObjects($path = null)
+
+		protected function _getObjects($context = null)
 		{
+			$path = $context;
+
 			$items = array(
 				'Dcim_Api_Location' => array(),
 				'Dcim_Api_Cabinet' => array(),
@@ -195,7 +206,7 @@
 			);
 		}
 
-		public function printObjectInfos(array $args, $fromCurrentPath = true)
+		public function printObjectInfos(array $args, $fromCurrentContext = true)
 		{
 			// /!\ ls AUB --> On ne doit pas afficher AUB mais le contenu de AUB !
 			/*$objectApi = end($this->_pathApi);
@@ -222,15 +233,19 @@
 				'equipment' => '_getEquipmentInfos'
 			);
 
-			$result = $this->_printObjectInfos($cases, $args, $fromCurrentPath);
+			$result = $this->_printObjectInfos($cases, $args, $fromCurrentContext);
 
 			if($result !== false)
 			{
 				list($status, $objectType, $infos) = $result;
 
-				if($status && $objectType === 'equipment') {
+				/**
+				  * /!\ Attention aux doublons lorsque printObjectsList est appelé manuellement
+				  * Voir code pour ls ou ll dans services/browser méthode _routeShellCmd
+				  */
+				/*if($status && $objectType === 'equipment') {
 					$this->printEquipmentExtra($infos);
-				}
+				}*/
 
 				return $status;
 			}
@@ -247,7 +262,7 @@
 				$status = $this->_printInformations('location', $infos);
 
 				if($status === false) {
-					Tools::e("Localisation introuvable", 'orange');
+					$this->_MAIN->error("Localisation introuvable", 'orange');
 				}
 
 				return true;
@@ -264,7 +279,7 @@
 				$status = $this->_printInformations('cabinet', $infos);
 
 				if($status === false) {
-					Tools::e("Baie introuvable", 'orange');
+					$this->_MAIN->error("Baie introuvable", 'orange');
 				}
 				elseif(count($infos) === 1)
 				{
@@ -280,13 +295,9 @@
 						}
 					}
 
-					$this->_MAIN->displayWaitingMsg();
-
 					// @todo $full affiche tous les U de la baie
 					$path = $infos[0]['path'].'/'.$infos[0]['name'];
-					$objects = $this->_getObjects($path);
-					$this->_MAIN->deleteWaitingMsg();
-					$this->_printObjectsList($objects);
+					$this->printObjectsList($path);
 				}
 
 				return true;
@@ -303,7 +314,7 @@
 				$status = $this->_printInformations('equipment', $infos);
 
 				if($status === false) {
-					Tools::e("Equipement introuvable", 'orange');
+					$this->_MAIN->error("Equipement introuvable", 'orange');
 				}
 				else {
 					$this->printEquipmentExtra($infos);
@@ -317,18 +328,13 @@
 
 		protected function printEquipmentExtra(array $infos)
 		{
-			if(count($infos) === 1)
-			{
-				$this->_MAIN->displayWaitingMsg();
-
+			if(count($infos) === 1) {
 				$path = $infos[0]['path'].'/'.$infos[0]['name'];
-				$objects = $this->_getObjects($path);
-				$this->_MAIN->deleteWaitingMsg();
-				$this->_printObjectsList($objects);
+				$this->printObjectsList($path);
 			}
 		}
 
-		protected function _getLocationInfos($location, $fromCurrentPath, $path = null, $recursion = false)
+		protected function _getLocationInfos($location, $fromCurrentPath = true, $path = null, $recursion = false)
 		{
 			$items = array();
 			$locations = array();
@@ -362,7 +368,7 @@
 			return $items;
 		}
 
-		protected function _getCabinetInfos($cabinet, $fromCurrentPath, $path = null, $recursion = false)
+		protected function _getCabinetInfos($cabinet, $fromCurrentPath = true, $path = null, $recursion = false)
 		{
 			$items = array();
 			$cabinets = array();
@@ -396,7 +402,7 @@
 			return $items;
 		}
 
-		protected function _getEquipmentInfos($equipment, $fromCurrentPath, $path = null, $recursion = false)
+		protected function _getEquipmentInfos($equipment, $fromCurrentPath = true, $path = null, $recursion = false)
 		{
 			$items = array();
 			$equipments = array();
@@ -449,21 +455,17 @@
 				$objects = $this->_searchObjects($args[0], $args[1], $args[2]);
 				$time2 = microtime(true);
 
-				$this->_MAIN->deleteWaitingMsg();
-
 				if($objects !== false)
 				{
 					$this->_MAIN->setLastCmdResult($objects);
-					$this->_MAIN->e(PHP_EOL.'RECHERCHE ('.round($time2-$time1).'s)', 'black', 'white', 'bold');
+					$this->_MAIN->print('RECHERCHE ('.round($time2-$time1).'s)', 'black', 'white', 'bold');
 
 					if(!$this->_MAIN->isOneShotCall())
 					{
 						if(isset($objects['locations']))
 						{
-							$this->_MAIN->e(PHP_EOL);
-
 							$counter = count($objects['locations']);
-							$this->_MAIN->e(PHP_EOL.'LOCATIONS ('.$counter.')', 'black', 'white');
+							$this->_MAIN->EOL()->print('LOCATIONS ('.$counter.')', 'black', 'white');
 
 							if($counter > 0)
 							{
@@ -472,20 +474,18 @@
 									$text1 = '['.$location['path'].']';
 									$text1 .= Tools::t($text1, "\t", 2, 0, 8);
 									$text2 = $location['header'];
-									Tools::e(PHP_EOL.$text1.$text2, 'grey');
+									$this->_MAIN->print($text1.$text2, 'grey');
 								}
 							}
 							else {
-								Tools::e(PHP_EOL.'Aucun résultat', 'orange');
+								$this->_MAIN->error('Aucun résultat', 'orange');
 							}
 						}
 
 						if(isset($objects['cabinets']))
 						{
-							$this->_MAIN->e(PHP_EOL);
-
 							$counter = count($objects['cabinets']);
-							$this->_MAIN->e(PHP_EOL.'CABINETS ('.$counter.')', 'black', 'white');
+							$this->_MAIN->EOL()->print('CABINETS ('.$counter.')', 'black', 'white');
 
 							if($counter > 0)
 							{
@@ -494,20 +494,18 @@
 									$text1 = '['.$cabinet['path'].']';
 									$text1 .= Tools::t($text1, "\t", 2, 0, 8);
 									$text2 = $cabinet['header'];
-									Tools::e(PHP_EOL.$text1.$text2, 'grey');
+									$this->_MAIN->print($text1.$text2, 'grey');
 								}
 							}
 							else {
-								Tools::e(PHP_EOL.'Aucun résultat', 'orange');
+								$this->_MAIN->error('Aucun résultat', 'orange');
 							}
 						}
 
 						if(isset($objects['equipments']))
 						{
-							$this->_MAIN->e(PHP_EOL);
-
 							$counter = count($objects['equipments']);
-							$this->_MAIN->e(PHP_EOL.'EQUIPMENTS ('.$counter.')', 'black', 'white');
+							$this->_MAIN->EOL()->print('EQUIPMENTS ('.$counter.')', 'black', 'white');
 
 							if($counter > 0)
 							{
@@ -518,17 +516,19 @@
 									$text2 = $equipment['templateName'];
 									$text2 .= Tools::t($text2, "\t", 4, 0, 8);
 									$text3 = $equipment['header'].' {'.$equipment['serialNumber'].'}';
-									Tools::e(PHP_EOL.$text1.$text2.$text3, 'grey');
+									$this->_MAIN->print($text1.$text2.$text3, 'grey');
 								}
 							}
 							else {
-								Tools::e(PHP_EOL.'Aucun résultat', 'orange');
+								$this->_MAIN->error('Aucun résultat', 'orange');
 							}
 						}
+
+						$this->_MAIN->EOL();
 					}
 				}
 				else {
-					Tools::e("Aucun résultat", 'orange');
+					$this->_MAIN->error("Aucun résultat trouvé", 'orange');
 				}
 
 				return true;

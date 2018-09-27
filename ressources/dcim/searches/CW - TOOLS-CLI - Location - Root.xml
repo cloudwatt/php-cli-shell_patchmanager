@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<search configurations="false" domain="com.patchmanager.shared.beans.Location">
+  <name>CW - TOOLS-CLI - Location - Root</name>
+  <expression>0&amp;1</expression>
+  <constraints>
+    <constraint alias="1" match-case="false" negation="true">
+      <field>location.parent.name</field>
+      <type>STRING</type>
+      <comparison>HAS_VALUE</comparison>
+      <comparison-configuration/>
+      <value/>
+    </constraint>
+    <constraint alias="2" match-case="false" negation="true">
+      <field>location.parent.layer</field>
+      <type>STRING</type>
+      <comparison>HAS_VALUE</comparison>
+      <comparison-configuration/>
+      <value/>
+    </constraint>
+  </constraints>
+</search>

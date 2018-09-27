@@ -10,7 +10,8 @@ You have to use base PHP-CLI SHELL project that is here: https://github.com/clou
 * Import profiles which are in ressources/dcim
     * formats: ressources/dcim/formats
 	* Reports: ressources/dcim/reports
-	* Searches: ressources/dcim/searches
+	* Searches: ressources/dcim/searches  
+__*/!\ Version 1.1 add new profiles!*__
 
 
 # INSTALLATION
@@ -24,9 +25,9 @@ __Do not forget to install php7.1-soap__
 
 #### REPOSITORIES
 * git clone https://github.com/cloudwatt/php-cli-shell_base
-* git checkout tags/v1.0
+* git checkout tags/v1.1
 * git clone https://github.com/cloudwatt/php-cli-shell_patchmanager
-* git checkout tags/v1.0
+* git checkout tags/v1.1
 * Merge these two repositories
 	
 #### CONFIGURATION FILE

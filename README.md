@@ -31,12 +31,18 @@ __Do not forget to install php7.1-soap__
 * Merge these two repositories
 	
 #### CONFIGURATION FILE
-* mv config.json.example config.json
-* vim config.json
+* mv configurations/config.json.example configurations/config.json
+* vim configurations/config.json
     * servers field contains all PatchManager server addresses which must be identified by custom key [DCIM_SERVER_KEY]  
 	  __server key must be unique and you will use it on next steps. You have an example in config file__
 	* userAttrs field contains all custom attributes which must be created on your PatchManager  
 	  __If you have a serial number custom attribute, change [PM_ATTR_SN] with the name of this attribute__
+* Optionnal
+    * You can create user configuration files to overwrite some configurations  
+	  These files will be ignored for commits, so your user config files can not be overwrited by a futur release
+	* vim configurations/config.user.json  
+	  Change configuration like browserCmd
+	* All *.user.json files are ignored by .gitignore
 
 #### PHP LAUNCHER FILE
 * mv dcim.php.example patchmanager.php

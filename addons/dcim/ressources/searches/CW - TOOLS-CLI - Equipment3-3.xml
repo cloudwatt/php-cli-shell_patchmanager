@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<search configurations="false" domain="com.patchmanager.shared.beans.Equipment">
+  <name>CW - TOOLS-CLI - Equipment3-3</name>
+  <expression>(0|1)&amp;(2|3)</expression>
+  <constraints>
+    <constraint alias="1" wildcard="true" wildcard-id="locationid">
+      <field>equipment.position.location.entityId</field>
+      <type>NUMBER</type>
+      <comparison>EQUALS</comparison>
+      <comparison-configuration/>
+    </constraint>
+    <constraint alias="2" wildcard="true" wildcard-id="locationid">
+      <field>equipment.position.location.ancestors.entityId</field>
+      <type>NUMBER</type>
+      <comparison>EQUALS</comparison>
+      <comparison-configuration>at-least-one</comparison-configuration>
+    </constraint>
+    <constraint alias="3" wildcard="true" wildcard-id="label">
+      <field>equipment.label</field>
+      <type>STRING</type>
+      <comparison>MATCHES</comparison>
+      <comparison-configuration/>
+    </constraint>
+    <constraint alias="4" wildcard="true" wildcard-id="description">
+      <field>equipment.description</field>
+      <type>STRING</type>
+      <comparison>MATCHES</comparison>
+      <comparison-configuration/>
+    </constraint>
+  </constraints>
+</search>

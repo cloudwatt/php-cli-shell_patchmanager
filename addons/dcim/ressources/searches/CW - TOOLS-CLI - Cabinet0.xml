@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<search configurations="false" domain="com.patchmanager.shared.beans.Cabinet">
+  <name>CW - TOOLS-CLI - Cabinet0</name>
+  <expression>0</expression>
+  <constraints>
+    <constraint alias="1" wildcard="true" wildcard-id="cabinetid">
+      <field>cabinet.entityId</field>
+      <type>NUMBER</type>
+      <comparison>EQUALS</comparison>
+      <comparison-configuration/>
+    </constraint>
+  </constraints>
+</search>

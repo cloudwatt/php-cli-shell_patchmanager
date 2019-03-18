@@ -7,41 +7,50 @@ You have to use base PHP-CLI SHELL project that is here: https://github.com/clou
 # REQUIREMENTS
 
 #### PATCHMANAGER
-* Import profiles which are in ressources/dcim
+* Import profiles which are in addons/dcim/ressources
     * formats: ressources/dcim/formats
 	* Reports: ressources/dcim/reports
 	* Searches: ressources/dcim/searches  
-__*/!\ Version 1.1 add new profiles!*__
+
+__*/!\ Do not rename custom profiles*__  
+__*/!\ Version 2.0 add new profiles!*__
 
 
 # INSTALLATION
 
 #### APT PHP
+Ubuntu only, you can get last PHP version from this PPA:  
 __*https://launchpad.net/~ondrej/+archive/ubuntu/php*__
 * add-apt-repository ppa:ondrej/php
-* apt-get update
-* apt install php7.1-cli php7.1-mbstring php7.1-readline php7.1-soap  
-__Do not forget to install php7.1-soap__
+* apt update
+
+You have to install a PHP version >= 7.1:
+* apt update
+* apt install php7.2-cli php7.2-soap php7.2-mbstring php7.2-readline php7.2-curl  
+__Do not forget to install php7.2-soap__
 
 #### REPOSITORIES
 * git clone https://github.com/cloudwatt/php-cli-shell_base
-* git checkout tags/v1.1
+* git checkout tags/v2.0
 * git clone https://github.com/cloudwatt/php-cli-shell_patchmanager
-* git checkout tags/v1.1
+* git checkout tags/v2.0
 * Merge these two repositories
 	
 #### CONFIGURATION FILE
-* mv configurations/config.json.example configurations/config.json
-* vim configurations/config.json
-    * servers field contains all PatchManager server addresses which must be identified by custom key [DCIM_SERVER_KEY]  
+* mv configurations/dcim.json.example configurations/dcim.json
+* vim configurations/dcim.json
+    * servers field contains all PatchManager server which must be identified by custom key [DCIM_SERVER_KEY]  
 	  __server key must be unique and you will use it on next steps. You have an example in config file__
-	* userAttrs field contains all custom attributes which must be created on your PatchManager  
-	  __If you have a serial number custom attribute, change [PM_ATTR_SN] with the name of this attribute__
+	* userAttrs section contains all custom attributes which must be created in your PatchManager  
+	  __If you have a serial number custom attribute, change [PM_ATTR_SN] with the name of this attribute otherwise leave false__
+	* preferences section contains all options about PatchManager  
+	  __CSV delimiter option must be identical between PHP-CLI configuration and PatchManager user preferences__
 * Optionnal
     * You can create user configuration files to overwrite some configurations  
 	  These files will be ignored for commits, so your user config files can not be overwrited by a futur release
-	* vim configurations/config.user.json  
-	  Change configuration like browserCmd
+	* mv configurations/dcim.user.json.example configurations/dcim.user.json
+	* vim configurations/dcim.user.json  
+	  Change configuration like browserCmd or DCIM preferences
 	* All *.user.json files are ignored by .gitignore
 
 #### PHP LAUNCHER FILE
@@ -50,7 +59,7 @@ __Do not forget to install php7.1-soap__
     * Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file
 
 #### CREDENTIALS FILE
-/!\ For security reason, use a read only account!  
+/!\ For security reason, you can use a read only account!  
 __*Change informations which are between []*__
 * vim credentialsFile
     * read -sr USER_PASSWORD_INPUT

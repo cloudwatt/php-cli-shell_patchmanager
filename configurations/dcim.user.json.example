@@ -1,0 +1,15 @@
+{
+	"DEFAULT": {
+		"sys": {
+			"browserCmd": "python -mwebbrowser"
+		}
+	},
+
+	"DCIM": {
+		"preferences": {
+			"report": {
+				"csvDelimiter": ","
+			}
+		}
+	}
+}

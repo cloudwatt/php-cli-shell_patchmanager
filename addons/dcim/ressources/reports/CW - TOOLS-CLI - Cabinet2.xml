@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<report>
+  <name>CW - TOOLS-CLI - Cabinet2</name>
+  <description>INFTSK-5007</description>
+  <components>
+    <component type="table">
+      <search configurations="false" domain="com.patchmanager.shared.beans.Cabinet">
+        <name>CW - TOOLS-CLI - Cabinet2</name>
+        <expression>0&amp;1</expression>
+        <constraints>
+          <constraint alias="1" wildcard="true" wildcard-id="locationid">
+            <field>cabinet.location.entityId</field>
+            <type>NUMBER</type>
+            <comparison>EQUALS</comparison>
+            <comparison-configuration/>
+          </constraint>
+          <constraint alias="2" wildcard="true" wildcard-id="label">
+            <field>cabinet.name</field>
+            <type>STRING</type>
+            <comparison>MATCHES</comparison>
+            <comparison-configuration/>
+          </constraint>
+        </constraints>
+      </search>
+      <data-format aggregates-only="false" domain="com.patchmanager.shared.beans.Cabinet" filtering="NO_FILTERING" ignore-duplicates="false" narrow="false">
+        <name>CW - TOOLS-CLI - Cabinet</name>
+        <description>INFTSK-5007</description>
+        <fields>
+          <field aggregate="false" format="{1}" header="Entity ID">
+            <expression>cabinet.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Name">
+            <expression>cabinet.name</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Path">
+            <expression>cabinet.location</expression>
+            <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+            <renderer-configuration>
+              <value key="[0]expression">{qname}</value>
+            </renderer-configuration>
+          </field>
+          <field aggregate="false" format="{1}" header="Location ID">
+            <expression>cabinet.location.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Location Name">
+            <expression>cabinet.location.name</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="FullPath">
+            <expression>cabinet.location.ancestors*.name</expression>
+            <renderer-configuration>
+              <value key="MULTIPLICITY_AGGREGATION">NONE</value>
+              <value key="MULTIPLICITY_REMOVE_DUPLICATES">n</value>
+              <value key="MULTIPLICITY_INCLUDE_NAME">n</value>
+              <value key="multiplicity-class0">com.patchmanager.shared.beans.Location</value>
+              <value key="MULTIPLICITY_IGNORE_EMPTY">n</value>
+              <value key="MULTIPLICITY_COLUMN_SEPARATOR"/>
+              <value key="MULTIPLICITY_SEPARATOR">,</value>
+            </renderer-configuration>
+          </field>
+        </fields>
+        <ordering-fields>
+          <ordering-field order-ascending="true">
+            <expression>cabinet.location</expression>
+            <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+            <renderer-configuration>
+              <value key="expression">{qname}</value>
+            </renderer-configuration>
+          </ordering-field>
+          <ordering-field order-ascending="true">
+            <expression>cabinet.name</expression>
+          </ordering-field>
+        </ordering-fields>
+      </data-format>
+    </component>
+  </components>
+</report>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<report>
+  <name>CW - TOOLS-CLI - Equipment3-2</name>
+  <description>INFTSK-5007</description>
+  <components>
+    <component type="table">
+      <search configurations="false" domain="com.patchmanager.shared.beans.Equipment">
+        <name>CW - TOOLS-CLI - Equipment3-2</name>
+        <expression>(0|1)&amp;2</expression>
+        <constraints>
+          <constraint alias="1" wildcard="true" wildcard-id="locationid">
+            <field>equipment.position.location.entityId</field>
+            <type>NUMBER</type>
+            <comparison>EQUALS</comparison>
+            <comparison-configuration/>
+          </constraint>
+          <constraint alias="2" wildcard="true" wildcard-id="locationid">
+            <field>equipment.position.location.ancestors.entityId</field>
+            <type>NUMBER</type>
+            <comparison>EQUALS</comparison>
+            <comparison-configuration>at-least-one</comparison-configuration>
+          </constraint>
+          <constraint alias="3" wildcard="true" wildcard-id="serialnumber">
+            <field>equipment.exportAttributeValues</field>
+            <type>ATTRIBUTES</type>
+            <format>{Serial number}</format>
+            <comparison>MATCHES</comparison>
+            <comparison-configuration/>
+          </constraint>
+        </constraints>
+      </search>
+      <data-format aggregates-only="false" domain="com.patchmanager.shared.beans.Equipment" filtering="NO_FILTERING" ignore-duplicates="false" narrow="false">
+        <name>CW - TOOLS-CLI - Equipment</name>
+        <description>INFTSK-5007</description>
+        <fields>
+          <field aggregate="false" format="{1}" header="Entity ID">
+            <expression>equipment.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Parent Entity ID">
+            <expression>equipment.position.slot.topLevelEquipment.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Label">
+            <expression>equipment.label</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Cabinet Entity ID">
+            <expression>equipment.position.cabinet.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Position Side">
+            <expression>equipment.position.cabinetPosition.side</expression>
+            <renderer>com.patchmanager.shared.beans.dataformat.renderer.SideRenderer</renderer>
+          </field>
+          <field aggregate="false" format="{1}" header="Position U">
+            <expression>equipment.position.cabinetPosition.uPositionInteger</expression>
+          </field>
+        </fields>
+        <ordering-fields>
+          <ordering-field order-ascending="true">
+            <expression>equipment.position</expression>
+            <renderer>com.patchmanager.shared.beans.dataformat.renderer.ExpressionRenderer</renderer>
+            <renderer-configuration>
+              <value key="expression">{container} ({details})</value>
+            </renderer-configuration>
+          </ordering-field>
+          <ordering-field order-ascending="true">
+            <expression>equipment.label</expression>
+          </ordering-field>
+        </ordering-fields>
+      </data-format>
+    </component>
+  </components>
+</report>

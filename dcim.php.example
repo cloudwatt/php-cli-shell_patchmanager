@@ -1,29 +1,23 @@
 <?php
 	define("ROOT_DIR", __DIR__);
-	require_once('services/dcim.php');
+	define("APP_DIR", __DIR__ . '/applications/dcim');
 
 	if(!isset($configurations))
 	{
 		$configurations = array(
-			__DIR__ . '/configurations/config.json',
-			__DIR__ . '/configurations/config.user.json',
+			__DIR__ . '/configurations/dcim.json',
+			__DIR__ . '/configurations/dcim.user.json',
 		);
 	}
 
-	/**
-	  * Déplace le curseur d'une ligne vers le haut
-	  * Fix le saut de ligne lors de la touche entrée pour lancer le script CLI
-	  *
-	  * Permet d'harmoniser le traitement des sauts de lignes:
-	  * --> Saut de ligne avant un texte et non après!
-	  */
-	echo "\033[1A";
+	require_once(APP_DIR . '/launchers/dcim.php');
+	$Launcher = new \App\Dcim\Launcher_Dcim();
 
 	/**
 	  * Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file
 	  * Example: $MAIN = new Service_Dcim(__DIR__ . '/config.json', 'myPmKey');
 	  */
-	$MAIN = new Service_Dcim($configurations, '[DCIM_SERVER_KEY]');
+	$SHELL = new \App\Dcim\Shell_Dcim($configurations, '[DCIM_SERVER_KEY]');
 
 	echo PHP_EOL;
 	exit();

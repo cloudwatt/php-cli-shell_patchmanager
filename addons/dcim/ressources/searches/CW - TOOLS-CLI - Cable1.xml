@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<search configurations="false" domain="com.patchmanager.shared.beans.Cable">
+  <name>CW - TOOLS-CLI - Cable1</name>
+  <expression>0</expression>
+  <constraints>
+    <constraint alias="1" wildcard="true" wildcard-id="label">
+      <field>cable.label</field>
+      <type>STRING</type>
+      <comparison>MATCHES</comparison>
+      <comparison-configuration/>
+    </constraint>
+  </constraints>
+</search>

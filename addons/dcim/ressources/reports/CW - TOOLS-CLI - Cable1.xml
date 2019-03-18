@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<report>
+  <name>CW - TOOLS-CLI - Cable1</name>
+  <description>INFTSK-5007</description>
+  <components>
+    <component type="table">
+      <search configurations="false" domain="com.patchmanager.shared.beans.Cable">
+        <name>CW - TOOLS-CLI - Cable1</name>
+        <expression>0</expression>
+        <constraints>
+          <constraint alias="1" wildcard="true" wildcard-id="label">
+            <field>cable.label</field>
+            <type>STRING</type>
+            <comparison>MATCHES</comparison>
+            <comparison-configuration/>
+          </constraint>
+        </constraints>
+      </search>
+      <data-format aggregates-only="false" domain="com.patchmanager.shared.beans.Cable" filtering="NO_FILTERING" ignore-duplicates="false" narrow="false">
+        <name>CW - TOOLS-CLI - Cable</name>
+        <description>INFTSK-5007</description>
+        <fields>
+          <field aggregate="false" format="{1}" header="Entity ID">
+            <expression>cable.entityId</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Label">
+            <expression>cable.label</expression>
+          </field>
+          <field aggregate="false" format="{1}" header="Location ID">
+            <expression>cable.locationsOrdered*.entityId</expression>
+            <renderer-configuration>
+              <value key="MULTIPLICITY_AGGREGATION">NONE</value>
+              <value key="MULTIPLICITY_REMOVE_DUPLICATES">n</value>
+              <value key="MULTIPLICITY_INCLUDE_NAME">n</value>
+              <value key="multiplicity-class0">com.patchmanager.shared.beans.Location</value>
+              <value key="MULTIPLICITY_IGNORE_EMPTY">n</value>
+              <value key="MULTIPLICITY_COLUMN_SEPARATOR"/>
+              <value key="MULTIPLICITY_SEPARATOR">,</value>
+            </renderer-configuration>
+          </field>
+        </fields>
+      </data-format>
+    </component>
+  </components>
+</report>

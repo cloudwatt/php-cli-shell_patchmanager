@@ -1,0 +1,45 @@
+{
+	"DEFAULT": {
+		"sys": {
+			"browserCmd": "xdg-open",
+			"secureShellCmd": "ssh",
+			"javawsCmd": "javaws"
+		}	
+	},
+
+	"DCIM": {
+		"servers": {
+			"[DCIM_SERVER_KEY]": {
+				"loginCredential": false,
+				"loginEnvVarName": "DCIM_[DCIM_SERVER_KEY]_LOGIN",
+				"passwordCredential": false,
+				"passwordEnvVarName": "DCIM_[DCIM_SERVER_KEY]_PASSWORD",
+				"serverLocation": "https://myPatchManagerServerAddress.ext",
+				"objectCaching" : false
+			},
+			"myPmKey": {
+				"loginCredential": false,
+				"loginEnvVarName": "DCIM_myPmKey_LOGIN",
+				"passwordCredential": false,
+				"passwordEnvVarName": "DCIM_myPmKey_PASSWORD",
+				"serverLocation": "https://patchmanager.com/pmserver/",
+				"objectCaching" : false
+			}
+		},
+
+		"userAttrs": {
+			"default": {
+				"prefix": "",
+				"labels": {
+					"serialNumber": "[PM_ATTR_SN]"
+				}
+			}
+		},
+
+		"preferences": {
+			"report": {
+				"csvDelimiter": ","
+			}
+		}
+	}
+}

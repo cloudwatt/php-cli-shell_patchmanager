@@ -166,6 +166,7 @@
 					foreach($array as &$part) {
 						$part = $this->_reduceArray($part, $keepKeys);
 					}
+					unset($part);
 
 					return $array;
 				}
@@ -274,6 +275,7 @@
 			foreach($array as &$part) {
 				$part = array_intersect_key($part, array_flip($fieldNamesToSlice));
 			}
+			unset($part);
 
 			return $array;
 		}
@@ -327,6 +329,7 @@
 				foreach($subLocationIds as &$subLocationId) {
 					$subLocationId = (array) $this->getSubLocationId($subLocationId);
 				}
+				unset($subLocationId);
 
 				return $subLocationIds;
 			}
@@ -371,6 +374,7 @@
 				foreach($result as &$_result) {
 					$_result = $_result['name'];
 				}
+				unset($_result);
 
 				return $result;
 			}

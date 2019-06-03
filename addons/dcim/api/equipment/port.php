@@ -69,8 +69,8 @@
 			if($this->portExists())
 			{
 				if($this->_connectedCableId === null) {
-					$result = $this->_DCIM->getConnectedCableIdByPortId($this->getPortId());
-					$this->_connectedCableId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+					$result = $this->_adapter->getConnectedCableIdByPortId($this->getPortId());
+					$this->_connectedCableId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 				}
 
 				return $this->_connectedCableId;
@@ -91,8 +91,8 @@
 				return false;
 			}
 			elseif($this->_connectedPortId === null) {
-				$result = $this->_DCIM->getConnectedPortIdByPortId($this->getPortId());
-				$this->_connectedPortId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+				$result = $this->_adapter->getConnectedPortIdByPortId($this->getPortId());
+				$this->_connectedPortId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 			}
 
 			return $this->_connectedPortId;
@@ -111,13 +111,13 @@
 			{
 				for(;;)
 				{
-					$otherSidePortId = $this->_DCIM->getOtherSidePortIdByPortId($connectedPortId);
+					$otherSidePortId = $this->_adapter->getOtherSidePortIdByPortId($connectedPortId);
 
-					if($this->_DCIM->isValidReturn($otherSidePortId))
+					if($this->_adapter->isValidReturn($otherSidePortId))
 					{
-						$conPortId = $this->_DCIM->getConnectedPortIdByPortId($otherSidePortId);
+						$conPortId = $this->_adapter->getConnectedPortIdByPortId($otherSidePortId);
 
-						if($this->_DCIM->isValidReturn($conPortId)) {
+						if($this->_adapter->isValidReturn($conPortId)) {
 							$connectedPortId = (int) $conPortId;
 							continue;
 						}
@@ -144,9 +144,9 @@
 			}
 			else
 			{
-				$result = $this->_DCIM->getParentEquipmentIdByPortId($this->getPortId());
+				$result = $this->_adapter->getParentEquipmentIdByPortId($this->getPortId());
 	
-				if($this->_DCIM->isValidReturn($result)) {
+				if($this->_adapter->isValidReturn($result)) {
 					return (int) $result;
 				}
 			}
@@ -167,8 +167,8 @@
 
 		protected function _getModuleEquipmentId($equipmentId, $moduleId = false)
 		{
-			$parentEquipId = $this->_DCIM->getParentEquipmentIdByEquipmentId($equipmentId);
-			return ($this->_DCIM->isValidReturn($parentEquipId)) ? ($this->_getModuleEquipmentId($parentEquipId, $equipmentId)) : ($moduleId);
+			$parentEquipId = $this->_adapter->getParentEquipmentIdByEquipmentId($equipmentId);
+			return ($this->_adapter->isValidReturn($parentEquipId)) ? ($this->_getModuleEquipmentId($parentEquipId, $equipmentId)) : ($moduleId);
 		}
 
 		/**
@@ -181,8 +181,8 @@
 			if($this->portExists())
 			{
 				if($this->_equipmentId === null) {
-					$result = $this->_DCIM->getTopEquipmentIdByPortId($this->getPortId());
-					$this->_equipmentId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+					$result = $this->_adapter->getTopEquipmentIdByPortId($this->getPortId());
+					$this->_equipmentId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 				}
 
 				return $this->_equipmentId;
@@ -203,9 +203,9 @@
 
 			if($equipmentId !== false)
 			{
-				$result = $this->_DCIM->resolvToLabel('equipment', $equipmentId);
+				$result = $this->_adapter->resolvToLabel('equipment', $equipmentId);
 
-				if($this->_DCIM->isValidReturn($result)) {
+				if($this->_adapter->isValidReturn($result)) {
 					return (string) $result;
 				}
 			}
@@ -225,7 +225,7 @@
 				$equipmentId = $this->getTopEquipmentId();
 
 				if($equipmentId !== false) {
-					$this->_equipmentApi = new Api_Equipment($equipmentId);
+					$this->_equipmentApi = Api_Equipment::factory($equipmentId);
 				}
 				else {
 					$this->_equipmentApi = false;
@@ -251,7 +251,7 @@
 				$cableId = $this->getCableId();
 
 				if($cableId !== false) {
-					$this->_cableApi = new Api_Cable($cableId);
+					$this->_cableApi = Api_Cable::factory($cableId);
 				}
 				else {
 					$this->_cableApi = false;

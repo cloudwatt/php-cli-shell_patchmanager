@@ -270,6 +270,7 @@ echo "\r\n\t";var_dump($intDatas);echo "\r\nEND 0\r\n";*/
 						$datas = array_merge($portDatas[$key], $datas);
 					}
 				}
+				unset($datas);
 
 				C\Tools::merge($this->_datas['interfaces'], $intDatas);
 			}

@@ -23,8 +23,8 @@
 				return $this->_objectLabel;
 			}
 			elseif($this->hasObjectId()) {			// /!\ Ne pas appeler objectExists sinon boucle infinie
-				$result = $this->_DCIM->resolvToLabel(static::OBJECT_TYPE, $this->getObjectId());
-				$this->_objectLabel = ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->resolvToLabel(static::OBJECT_TYPE, $this->getObjectId());
+				$this->_objectLabel = ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 				return $this->_objectLabel;
 			}
 			else {

@@ -23,22 +23,6 @@
 		const SIDE_FRONT = 'front';
 		const SIDE_REAR = 'rear';
 
-		/**
-		  * Enable or disable cache feature
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_cache = array();		// DCIM server ID keys, boolean value
-
-		/**
-		  * All cabinets (cache)
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_objects = array();	// DCIM server ID keys, array value
-
 
 		public function cabinetIdIsValid($cabinetId)
 		{
@@ -72,7 +56,7 @@
 				if($this->_objectDatas === null)
 				{
 					$args = array('cabinetid' => $this->getCabinetId());
-					$results = $this->_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = $this->_adapter->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$this->_objectDatas = $results[0];
@@ -102,7 +86,7 @@
 					{
 						$equipmentId = current($equipmentIds);
 
-						$Api_Equipment = new Api_Equipment($equipmentId);
+						$Api_Equipment = Api_Equipment::factory($equipmentId);
 						$locationId = $Api_Equipment->getLocationId();
 						$this->_locationId = ($locationId !== false) ? ($locationId) : (false);
 					}
@@ -111,7 +95,7 @@
 					}*/
 
 					$args = array('cabinetid' => $this->getCabinetId());
-					$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = self::_getAdapter()->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$result = $results[0];
@@ -167,7 +151,7 @@
 		public function getEquipmentIds()
 		{
 			if($this->cabinetExists()) {
-				return $this->_DCIM->getEquipmentIdsByCabinetId($this->getCabinetId());
+				return $this->_adapter->getEquipmentIdsByCabinetId($this->getCabinetId());
 			}
 			else {
 				return array();
@@ -177,8 +161,8 @@
 		public function getEquipmentId($equipmentLabel)
 		{
 			if($this->cabinetExists()) {
-				$result = $this->_DCIM->getEquipmentIdByCabinetIdEquipmentLabel($this->getCabinetId(), $equipmentLabel);
-				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->getEquipmentIdByCabinetIdEquipmentLabel($this->getCabinetId(), $equipmentLabel);
+				return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 			}
 			else {
 				return false;
@@ -293,7 +277,7 @@
 				$reportName = 'label';
 			}
 
-			$results = self::$_DCIM->getReportResults(self::REPORT_NAMES[$reportName], $args);
+			$results = self::_getAdapter()->getReportResults(self::REPORT_NAMES[$reportName], $args);
 
 			if($results !== false)
 			{
@@ -304,30 +288,9 @@
 					$result['path'] = implode(self::SEPARATOR_PATH, $fullPath);
 					$result['fullpath'] = $result['path'];
 				}
+				unset($result);
 			}
 
 			return $results;
-		}
-
-		/**
-		  * @param Addon\Dcim\Main $DCIM
-		  * @return bool
-		  */
-		protected static function _setObjects(C\Addon\Adapter $DCIM = null)
-		{
-			if($DCIM === null) {
-				$DCIM = self::$_DCIM;
-			}
-
-			$id = $DCIM->getServerId();
-			$result = self::searchCabinets(self::WILDCARD);
-
-			if($result !== false) {
-				self::$_objects[$id] = $result;
-				return true;
-			}
-			else {
-				return false;
-			}
 		}
 	}

@@ -22,22 +22,6 @@
 		const FIELD_DESC = 'description';
 
 		/**
-		  * Enable or disable cache feature
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_cache = array();		// DCIM server ID keys, boolean value
-
-		/**
-		  * All locations (cache)
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_objects = array();	// DCIM server ID keys, array value
-
-		/**
 		  * @var array
 		  */
 		static protected $_rootLocations = null;
@@ -106,7 +90,7 @@
 				if($this->_objectDatas === null)
 				{
 					$args = array('locationid' => $this->getLocationId());
-					$results = $this->_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = $this->_adapter->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$this->_objectDatas = $results[0];
@@ -135,14 +119,14 @@
 					$path = explode(',', $path);
 
 					$selfClassName = static::class;
-					$Api_Location = new $selfClassName();
+					$Api_Location = $selfClassName::factory();
 					$locationId = $Api_Location->getSubLocationId($path[0]);
 
 					if($locationId !== false)
 					{
 						for($i=1; $i<count($path); $i++)
 						{
-							$locationId = $this->_DCIM->getLocationIdByParentLocationIdLocationLabel($locationId, $path[$i], false);
+							$locationId = $this->_adapter->getLocationIdByParentLocationIdLocationLabel($locationId, $path[$i], false);
 
 							if($locationId === false) {
 								break;
@@ -169,7 +153,7 @@
 				$locationId = $this->getParentLocationId();
 
 				if($locationId !== false) {
-					$this->_parentLocationApi = new Api_Location($locationId);
+					$this->_parentLocationApi = Api_Location::factory($locationId);
 				}
 				else {
 					$this->_parentLocationApi = false;
@@ -186,11 +170,11 @@
 				if($this->_path === null)
 				{
 					// Ne retourne pas le chemin complet
-					/*$result = $this->_DCIM->getLocationPathByLocationId($this->getLocationId());
-					return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);*/
+					/*$result = $this->_adapter->getLocationPathByLocationId($this->getLocationId());
+					return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);*/
 
 					$args = array('locationid' => $this->getLocationId());
-					$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = self::_getAdapter()->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$result = $results[0];
@@ -233,7 +217,7 @@
 		public function getSubLocationIds()
 		{
 			if($this->locationExists()) {
-				return $this->_DCIM->getSubLocationIds($this->getLocationId(), false);
+				return $this->_adapter->getSubLocationIds($this->getLocationId(), false);
 			}
 			else {
 				return $this->getRootLocationIds();
@@ -243,10 +227,10 @@
 		public function getSubLocationId($locationLabel)
 		{
 			if($this->locationExists()) {
-				return $this->_DCIM->getLocationIdByParentLocationIdLocationLabel($this->getLocationId(), $locationLabel, false);
+				return $this->_adapter->getLocationIdByParentLocationIdLocationLabel($this->getLocationId(), $locationLabel, false);
 			}
 			else {
-				$results = self::$_DCIM->getReportResults(self::REPORT_NAMES['root']);
+				$results = self::_getAdapter()->getReportResults(self::REPORT_NAMES['root']);
 				$result = $this->_filterObjects($results, 'name', $locationLabel);
 				return (C\Tools::is('array', $result) && count($result) === 1) ? ($result[0]['entity_id']) : (false);
 			}
@@ -279,7 +263,7 @@
 		public function getCabinetIds()
 		{
 			if($this->locationExists()) {
-				return $this->_DCIM->getCabinetIdsByLocationId($this->getLocationId());
+				return $this->_adapter->getCabinetIdsByLocationId($this->getLocationId());
 			}
 			else {
 				return array();
@@ -292,7 +276,7 @@
 		public function getCabinetLabels()
 		{
 			if($this->locationExists()) {
-				return $this->_DCIM->getCabinetLabelsByLocationId($this->getLocationId());
+				return $this->_adapter->getCabinetLabelsByLocationId($this->getLocationId());
 			}
 			else {
 				return array();
@@ -302,8 +286,8 @@
 		public function getCabinetId($cabinetLabel)
 		{
 			if($this->locationExists()) {
-				$result = $this->_DCIM->getCabinetIdByLocationIdCabinetLabel($this->getLocationId(), $cabinetLabel);
-				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->getCabinetIdByLocationIdCabinetLabel($this->getLocationId(), $cabinetLabel);
+				return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 			}
 			else {
 				return false;
@@ -324,8 +308,8 @@
 		public function getEquipmentId($equipmentLabel)
 		{
 			if($this->locationExists()) {
-				$result = $this->_DCIM->getEquipmentIdByLocationIdEquipmentLabel($this->getLocationId(), $equipmentLabel);
-				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->getEquipmentIdByLocationIdEquipmentLabel($this->getLocationId(), $equipmentLabel);
+				return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 			}
 			else {
 				return false;
@@ -466,7 +450,7 @@
 				$reportName = 'label';
 			}
 
-			$results = self::$_DCIM->getReportResults(self::REPORT_NAMES[$reportName], $args);
+			$results = self::_getAdapter()->getReportResults(self::REPORT_NAMES[$reportName], $args);
 
 			foreach($results as &$result) {
 				$fullPath = explode(self::SEPARATOR_PATH, $result['fullpath']);
@@ -474,29 +458,8 @@
 				$result['path'] = implode(self::SEPARATOR_PATH, $fullPath);
 				$result['fullpath'] = $result['path'];
 			}
+			unset($result);
 
 			return $results;
-		}
-
-		/**
-		  * @param Addon\Dcim\Main $DCIM
-		  * @return bool
-		  */
-		protected static function _setObjects(C\Addon\Adapter $DCIM = null)
-		{
-			if($DCIM === null) {
-				$DCIM = self::$_DCIM;
-			}
-
-			$id = $DCIM->getServerId();
-			$result = self::searchLocations(self::WILDCARD);
-
-			if($result !== false) {
-				self::$_objects[$id] = $result;
-				return true;
-			}
-			else {
-				return false;
-			}
 		}
 	}

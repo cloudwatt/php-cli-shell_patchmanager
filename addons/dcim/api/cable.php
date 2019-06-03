@@ -60,7 +60,7 @@
 				if($this->_objectDatas === null)
 				{
 					$args = array('cableid' => $this->getCableId());
-					$results = $this->_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = $this->_adapter->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$this->_objectDatas = $results[0];
@@ -87,7 +87,7 @@
 				if($this->_locationId === null)
 				{
 					$args = array('cableid' => $this->getCableId());
-					$results = $this->_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = $this->_adapter->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$this->_locationId = $result['location_id'];
@@ -129,14 +129,14 @@
 			{
 				if($this->hasLocationId())
 				{
-					if($this->_DCIM->templateExists($template))
+					if($this->_adapter->templateExists($template))
 					{
 						if($label === null && $this->hasCableLabel()) {
 							$label = $this->getCableLabel();
 						}
 
 						try {
-							$cableId = $this->_DCIM->addCable($this->getLocationId(), $template, $label);
+							$cableId = $this->_adapter->addCable($this->getLocationId(), $template, $label);
 						}
 						catch(E\Message $e) {
 							$this->_errorMessage = "Unable to create cable '".$template."' '".$label."' to location '".$this->locationApi->label."' in DCIM: ".$e->getMessage();
@@ -177,7 +177,7 @@
 				if($portApi->portExists())
 				{
 					try {
-						$cableId = $this->_DCIM->connectCable($this->getCableId(), $portApi->id);
+						$cableId = $this->_adapter->connectCable($this->getCableId(), $portApi->id);
 					}
 					catch(E\Message $e) {
 						$this->_errorMessage = "Unable to connect cable '".$this->label."' to port '".$portApi->label."' in DCIM: ".$e->getMessage();
@@ -237,7 +237,7 @@
 			if($this->cableExists())
 			{
 				try {
-					$status = $this->_DCIM->updateCableInfos($this->getCableId(), $label, $description);
+					$status = $this->_adapter->updateCableInfos($this->getCableId(), $label, $description);
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to update cable informations from DCIM: ".$e->getMessage();
@@ -262,7 +262,7 @@
 			if($this->cableExists())
 			{
 				try {
-					$status = $this->_DCIM->removeCable($this->getCableId());
+					$status = $this->_adapter->removeCable($this->getCableId());
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to remove cable from DCIM: ".$e->getMessage();

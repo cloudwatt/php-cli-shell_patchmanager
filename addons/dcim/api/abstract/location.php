@@ -41,7 +41,7 @@
 				$locationId = $this->getLocationId();
 
 				if($locationId !== false) {
-					$this->_locationApi = new Api_Location($locationId);
+					$this->_locationApi = Api_Location::factory($locationId);
 				}
 				else {
 					$this->_locationApi = false;

@@ -8,6 +8,8 @@
 
 	class Connector_Soap extends Connector_Abstract
 	{
+		const METHOD = 'SOAP';
+
 		const SOAP_URN = array(
 			'session' => 'session-api?wsdl',
 			'resolver' => 'resolver-api?wsdl',
@@ -35,19 +37,9 @@
 
 		const CABLE_SIMPLEX = 'cable_simplex';
 		const CABLE_DUPLEX = 'cable_duplex';
- 
-		/**
-		  * @var string
-		  */
-		protected $_id;
 
 		/**
-		  * DCIM configuration
-		  * @var Core\Config
-		  */
-		protected $_config;
-
-		/**
+		  * DCIM server URL
 		  * @var string
 		  */
 		protected $_server;
@@ -71,26 +63,10 @@
 		  */
 		protected $_reportCsvDelimiter;
 
-		/**
-		  * @var bool
-		  */
-		protected $_debug = false;
 
-
-		public function __construct($id, $server, $login, $password, $printInfoMessages = true, $debug = false)
+		public function __construct(Service $service, C\Config $config, $server, $login, $password, $debug = false)
 		{
-			/**
-			  * Pourra servir plus tard pour sélectionner une configuration
-			  * différente en fonction de l'ID à partir de CONFIG
-			  */
-			$this->_id = $id;
-			$this->debug($debug);
-
-			$this->_config = C\Config::getInstance()->DCIM;
-
-			if($printInfoMessages) {
-				C\Tools::e(PHP_EOL."Connection SOAP au DCIM @ ".$server." veuillez patienter ... ", 'blue');
-			}
+			parent::__construct($service, $config, $debug);
 
 			$this->_server = rtrim($server, '/');
 			$this->_soapAPI = new ArrayObject();
@@ -117,10 +93,6 @@
 			}
 
 			$this->_reportCsvDelimiter = $this->_config->preferences->report->csvDelimiter;
-
-			if($printInfoMessages) {
-				C\Tools::e("[OK]", 'green');
-			}
 		}
 
 		protected function _initSoapAPI($key, $server, $urn, $httpProxy, $httpsProxy)
@@ -130,7 +102,7 @@
 
 		public function getServerId()
 		{
-			return $this->_id;
+			return $this->getServiceId();
 		}
 
 		public function getJnlpUrl($version = 64)
@@ -196,6 +168,7 @@
 							$result = array_merge($result, (array) $this->getSubLocationId($subLocationId, true));
 						}
 					}
+					unset($subLocationId);
 
 					return $result;
 				}
@@ -332,7 +305,19 @@
 			$args = $this->getArgs(array($equipmentId));
 			$position = $this->_soapAPI->equipments->getCabinetUPosition($args)->return;
 			$result = preg_match('#^U([0-9]{1,2})\[([a-z]*)\]$#i', $position, $matches);
-			return ($result === 1) ? (array(0 => $matches[2], 1 => $matches[1], 'side' => $matches[2], 'U' => $matches[1])) : (false);	// Compatible list() et key []
+
+			if($result === 1)
+			{
+				$matches[2] = mb_strtolower($matches[2]);
+
+				return array(	// Compatible list() et key []
+					0 => $matches[2], 1 => $matches[1],
+					'side' => $matches[2], 'U' => $matches[1]
+				);
+			}
+			else {
+				return false;
+			}
 		}
 
 		/**
@@ -804,121 +789,6 @@
 				return false;
 			}
 		}
-
-		public function getArgs(array $args)
-		{
-			$_args = new ArrayObject();
-
-			if($this->_session !== null) {
-				$_args->arg0 = $this->_session;
-				$j=1;
-			} else {
-				$j=0;
-			}
-
-			for($i=0;$i<count($args);$i++) {
-				$_args->{"arg".$j} = $args[$i];
-				$j++;
-			}
-
-			return $_args;
-		}
-
-		public function explodeReturn($return)
-		{
-			return explode(', ', trim($return, '[]'));
-		}
-
-		public function isValidReturn($return)
-		{
-			/*
-			class stdClass#17 (1) {
-				public $return =>
-				string(83) "[ERROR] java.io.FileNotFoundException: ./files/search/. (No such file or directory)"
-			}
-			*/
-			if($return instanceof \stdClass) {
-				$return = $return->return;
-			}
-
-			// /!\ Ne pas utiliser empty: var_dump(empty(0)) --> bool(true), un étage peut être 0 par exemple
-			return ($return !== "" && $return !== null && $return !== 'null' && $return !== false && !preg_match('#ERROR|EXCEPTION#i', $return));
-		}
-
-		public function resolvToLabel($type, $id)
-		{
-			$args = $this->getArgs(array($type, $id));
-			return $this->_soapAPI->resolver->resolveToLabel($args)->return;
-		}
-
-		public function resolvToTemplate($type, $id)
-		{
-			$args = $this->getArgs(array(ucfirst($type), $id));
-			return $this->_soapAPI->getters->getTemplateName($args)->return;
-		}
-
-		/**
-		  * @param string $category
-		  * @param string $key
-		  * @return false|string
-		  */
-		public function getUserAttrName($category, $key)
-		{
-			switch(mb_strtolower($category))
-			{
-				case 'base':
-				case 'common':
-				case 'default':
-				{
-					if($this->_config->userAttrs->default->labels->key_exists($key)) {
-						return trim($this->_config->userAttrs->default->prefix.' '.$this->_config->userAttrs->default->labels[$key], ' ');
-					}
-					break;
-				}
-
-				case 'net':
-				case 'network':
-				{
-					if(substr($key, -1) !== '#') {
-						$key .= '#';
-					}
-
-					$key = str_pad($key, 3, '0', STR_PAD_LEFT);
-
-					if($this->_config->userAttrs->network->labels->key_exists($key)) {
-						return $key.' '.$this->_config->userAttrs->network->prefix.' '.$this->_config->userAttrs->network->labels[$key];
-					}
-
-					break;
-				}
-
-				case 'sys':
-				case 'system':
-				{
-					if(substr($key, -1) !== '#') {
-						$key .= '#';
-					}
-
-					$key = str_pad($key, 3, '0', STR_PAD_LEFT);
-
-					if($this->_config->userAttrs->system->labels->key_exists($key)) {
-						return $key.' '.$this->_config->userAttrs->system->prefix.' '.$this->_config->userAttrs->system->labels[$key];
-					}
-
-					break;
-				}
-
-				default:
-				{
-					if($this->_config->userAttrs->{$category}->labels->key_exists($key)) {
-						return trim($this->_config->userAttrs->{$category}->prefix.' '.$this->_config->userAttrs->{$category}->labels[$key], ' ');
-					}
-					break;
-				}
-			}
-
-			return false;
-		}
 		// ===============================
 
 		// =========== WRITER ============
@@ -1154,6 +1024,155 @@
 		// -------------------------------
 		// ===============================
 
+		// ============ TOOL =============
+		public function getArgs(array $args)
+		{
+			$_args = new ArrayObject();
+
+			if($this->_session !== null) {
+				$_args->arg0 = $this->_session;
+				$j=1;
+			} else {
+				$j=0;
+			}
+
+			for($i=0;$i<count($args);$i++) {
+				$_args->{"arg".$j} = $args[$i];
+				$j++;
+			}
+
+			return $_args;
+		}
+
+		public function explodeReturn($return)
+		{
+			return explode(', ', trim($return, '[]'));
+		}
+
+		public function isValidReturn($return)
+		{
+			/*
+			class stdClass#17 (1) {
+				public $return =>
+				string(83) "[ERROR] java.io.FileNotFoundException: ./files/search/. (No such file or directory)"
+			}
+			*/
+			if($return instanceof \stdClass) {
+				$return = $return->return;
+			}
+
+			// /!\ Ne pas utiliser empty: var_dump(empty(0)) --> bool(true), un étage peut être 0 par exemple
+			return ($return !== "" && $return !== null && $return !== 'null' && $return !== false && !preg_match('#ERROR|EXCEPTION#i', $return));
+		}
+
+		public function resolvToLabel($type, $id)
+		{
+			$args = $this->getArgs(array($type, $id));
+			return $this->_soapAPI->resolver->resolveToLabel($args)->return;
+		}
+
+		public function resolvToTemplate($type, $id)
+		{
+			$args = $this->getArgs(array(ucfirst($type), $id));
+			return $this->_soapAPI->getters->getTemplateName($args)->return;
+		}
+
+		/**
+		  * @param string $category
+		  * @param string $key
+		  * @return false|string
+		  */
+		public function getUserAttrName($category, $key)
+		{
+			switch(mb_strtolower($category))
+			{
+				case 'base':
+				case 'common':
+				case 'default':
+				{
+					if($this->_config->userAttrs->default->labels->key_exists($key)) {
+						return trim($this->_config->userAttrs->default->prefix.' '.$this->_config->userAttrs->default->labels[$key], ' ');
+					}
+					break;
+				}
+
+				case 'net':
+				case 'network':
+				{
+					if(substr($key, -1) !== '#') {
+						$key .= '#';
+					}
+
+					$key = str_pad($key, 3, '0', STR_PAD_LEFT);
+
+					if($this->_config->userAttrs->network->labels->key_exists($key)) {
+						return $key.' '.$this->_config->userAttrs->network->prefix.' '.$this->_config->userAttrs->network->labels[$key];
+					}
+
+					break;
+				}
+
+				case 'sys':
+				case 'system':
+				{
+					if(substr($key, -1) !== '#') {
+						$key .= '#';
+					}
+
+					$key = str_pad($key, 3, '0', STR_PAD_LEFT);
+
+					if($this->_config->userAttrs->system->labels->key_exists($key)) {
+						return $key.' '.$this->_config->userAttrs->system->prefix.' '.$this->_config->userAttrs->system->labels[$key];
+					}
+
+					break;
+				}
+
+				default:
+				{
+					if($this->_config->userAttrs->{$category}->labels->key_exists($key)) {
+						return trim($this->_config->userAttrs->{$category}->prefix.' '.$this->_config->userAttrs->{$category}->labels[$key], ' ');
+					}
+					break;
+				}
+			}
+
+			return false;
+		}
+
+		protected function _castToInt(array $datas)
+		{
+			foreach($datas as $index => &$data)
+			{
+				if($this->isValidReturn($data)) {	// /!\ Risque de variable empty
+					$data = (int) $data;
+				}
+				else {
+					unset($datas[$index]);
+				}
+			}
+			unset($data);
+
+			return $datas;
+		}
+
+		protected function _castToString(array $datas)
+		{
+			foreach($datas as $index => &$data)
+			{
+				if($this->isValidReturn($data)) {	// /!\ Risque de variable empty
+					$data = (string) $data;
+				}
+				else {
+					unset($datas[$index]);
+				}
+			}
+			unset($data);
+
+			return $datas;
+		}
+		// ===============================
+
 		/**
 		 * @param bool $debug
 		 * @return $this
@@ -1181,35 +1200,5 @@
 		public function __destruct()
 		{
 			$this->close();
-		}
-
-		protected function _castToInt(array $datas)
-		{
-			foreach($datas as $index => &$data)
-			{
-				if($this->isValidReturn($data)) {	// /!\ Risque de variable empty
-					$data = (int) $data;
-				}
-				else {
-					unset($datas[$index]);
-				}
-			}
-
-			return $datas;
-		}
-
-		protected function _castToString(array $datas)
-		{
-			foreach($datas as $index => &$data)
-			{
-				if($this->isValidReturn($data)) {	// /!\ Risque de variable empty
-					$data = (string) $data;
-				}
-				else {
-					unset($datas[$index]);
-				}
-			}
-
-			return $datas;
 		}
 	}

@@ -54,8 +54,8 @@
 				return false;
 			}
 			elseif($this->_childEquipmentId === null) {
-				$result = $this->_DCIM->getEquipmentIdBySlotId($this->getSlotId());
-				$this->_childEquipmentId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+				$result = $this->_adapter->getEquipmentIdBySlotId($this->getSlotId());
+				$this->_childEquipmentId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 			}
 
 			return $this->_childEquipmentId;
@@ -71,8 +71,8 @@
 			if($this->slotExists())
 			{
 				if($this->_equipmentId === null) {
-					$result = $this->_DCIM->getTopEquipmentIdBySlotId($this->getSlotId());
-					$this->_equipmentId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+					$result = $this->_adapter->getTopEquipmentIdBySlotId($this->getSlotId());
+					$this->_equipmentId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 				}
 
 				return $this->_equipmentId;
@@ -93,9 +93,9 @@
 
 			if($equipmentId !== false)
 			{
-				$result = $this->_DCIM->resolvToLabel('equipment', $equipmentId);
+				$result = $this->_adapter->resolvToLabel('equipment', $equipmentId);
 
-				if($this->_DCIM->isValidReturn($result)) {
+				if($this->_adapter->isValidReturn($result)) {
 					return (string) $result;
 				}
 			}
@@ -115,7 +115,7 @@
 				$equipmentId = $this->getTopEquipmentId();
 
 				if($equipmentId !== false) {
-					$this->_equipmentApi = new Api_Equipment($equipmentId);
+					$this->_equipmentApi = Api_Equipment::factory($equipmentId);
 				}
 				else {
 					$this->_equipmentApi = false;

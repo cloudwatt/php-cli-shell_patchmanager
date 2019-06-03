@@ -11,47 +11,10 @@
 		const WILDCARD = '*';
 		const SEPARATOR_PATH = ',';
 
-		/**
-		  * @var string
-		  */
-		protected static $_parentAdapter = __NAMESPACE__ .'\Main';
-
-		/**
-		  * @var Addon\Dcim\Main
-		  */
-		protected static $_DCIM = null;			// Global DCIM (enabled)
-
-		/**
-		  * @var Addon\Dcim\Main[]
-		  */
-		protected static $_aDCIM = array();		// a = all/array/available DCIM
-
-		/**
-		  * @var Addon\Dcim\Main
-		  */
-		protected $_DCIM_ = null;				// Local DCIM (for this instance)
-
-
-		public function __construct($objectId = null)
-		{
-			parent::__construct($objectId);
-			$this->_DCIM_ = &$this->_ownerAdapter;	// /!\ A executer avant _setObjectId
-			$this->_setObjectId($objectId);			// @todo temp
-		}
 
 		public static function objectIdIsValid($objectId)
 		{
 			return C\Tools::is('int&&>0', $objectId);
-		}
-
-		public function hasObjectId()
-		{
-			return ($this->_objectId !== null);
-		}
-
-		public function getObjectId()
-		{
-			return $this->_objectId;
 		}
 
 		public function objectExists()
@@ -110,8 +73,8 @@
 		public function getTemplateName()
 		{
 			if($this->objectExists()) {
-				$result = $this->_DCIM->resolvToTemplate(static::OBJECT_TYPE, $this->getObjectId());
-				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->resolvToTemplate(static::OBJECT_TYPE, $this->getObjectId());
+				return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 			}
 			else {
 				return false;
@@ -125,13 +88,13 @@
 		  */
 		public function getUserAttrField($category, $attribute = null)
 		{
-			if(!C\Tools::is('string&&!empty', $attribute)) {
+			if(!C\Tools::is('human', $attribute)) {
 				$attribute = $category;
 				$category = 'default';
 				$noCateg = true;
 			}
 
-			$attrField = $this->_DCIM->getUserAttrName($category, $attribute);
+			$attrField = $this->_adapter->getUserAttrName($category, $attribute);
 			return ($attrField === false && isset($noCateg)) ? ($attribute) : ($attrField);
 		}
 
@@ -147,8 +110,8 @@
 				$attrField = $this->getUserAttrField($category, $attribute);
 
 				if($attrField !== false) {
-					$result = $this->_DCIM->getUserAttrById(static::OBJECT_TYPE, $this->getObjectId(), $attrField);
-					return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+					$result = $this->_adapter->getUserAttrById(static::OBJECT_TYPE, $this->getObjectId(), $attrField);
+					return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 				}
 			}
 
@@ -161,39 +124,23 @@
 			{
 				case 'dcim':
 				case '_DCIM': {
-					return self::$_DCIM;
-				}
-				case 'id': {
-					return $this->getObjectId();
-				}
-				case 'label': {
-					return $this->getObjectLabel();
+					return $this->_adapter;
 				}
 				case 'templateName': {
 					return $this->getTemplateName();
 				}
 				default: {
-					throw new Exception("This attribute '".$name."' does not exist", E_USER_ERROR);
+					return parent::__get($name);
 				}
 			}
 		}
 
-		public function __call($method, $parameters = null)
+		/**
+		  * @return Addon\Dcim\Orchestrator
+		  */
+		protected static function _getOrchestrator()
 		{
-			if(substr($method, 0, 3) === 'get')
-			{
-				$name = substr($method, 3);
-				$name = mb_strtolower($name);
-
-				switch($name)
-				{
-					case 'label': {
-						return $this->getObjectLabel();
-					}
-				}
-			}
-
-			throw new Exception("Method '".$method."' does not exist", E_USER_ERROR);
+			return Orchestrator::getInstance();
 		}
 
 		/**
@@ -239,7 +186,7 @@
 			}
 
 			// @todo use _getReportName
-			$results = self::$_DCIM->getReportResults(static::REPORT_NAMES[$reportName], $args);
+			$results = static::_getAdapter()->getReportResults(static::REPORT_NAMES[$reportName], $args);
 
 			if(C\Tools::is('array&&count>0', $results))
 			{
@@ -252,56 +199,5 @@
 			else {
 				throw new Exception("Unable to retrieve objects from report '".$reportName."'", E_USER_ERROR);
 			}
-		}
-
-		/**
-		  * @param Addon\Dcim\Main|Addon\Dcim\Main[] $DCIM
-		  * @return bool
-		  */
-		public static function setDcim($DCIM)
-		{
-			return self::setAdapter($DCIM);
-		}
-
-		/**
-		  * @param Addon\Dcim\Main|Addon\Dcim\Main[] $adapter
-		  * @throw Core\Exception
-		  * @return bool
-		  */
-		public static function setAdapter($adapter)
-		{
-			$status = parent::setAdapter($adapter);
-
-			if($status) {
-				self::$_DCIM = &self::$_adapter;
-				self::$_aDCIM = &self::$_allAdapters;
-			}
-
-			return $status;
-		}
-
-		/**
-		  * @return null|Addon\Dcim\Main|Addon\Dcim\Main[]
-		  */
-		public static function getDcim()
-		{
-			return self::getAdapter();
-		}
-
-		/**
-		  * @param string $key
-		  * @return bool
-		  */
-		public static function enableDcim($key)
-		{
-			return self::enableAdapter($key);
-		}
-
-		/**
-		  * @return null|Addon\Dcim\Main
-		  */
-		public static function getDcimEnabled()
-		{
-			return self::getAdapterEnabled();
 		}
 	}

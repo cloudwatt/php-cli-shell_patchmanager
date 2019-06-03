@@ -54,22 +54,6 @@
 		const FIELD_DESC = 'description';
 
 		/**
-		  * Enable or disable cache feature
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_cache = array();		// DCIM server ID keys, boolean value
-
-		/**
-		  * All equipements (cache)
-		  * /!\ Cache must be per type
-		  *
-		  * @var array
-		  */
-		protected static $_objects = array();	// DCIM server ID keys, array value
-
-		/**
 		  * @var int
 		  */
 		protected $_cabinetId = null;
@@ -133,7 +117,7 @@
 				if($this->_objectDatas === null)
 				{
 					$args = array('equipmentid' => $this->getEquipmentId());
-					$results = $this->_DCIM->getReportResults(self::REPORT_NAMES['self'], $args);
+					$results = $this->_adapter->getReportResults(self::REPORT_NAMES['self'], $args);
 
 					if(count($results) === 1) {
 						$this->_objectDatas = $results[0];
@@ -158,8 +142,8 @@
 			if($this->equipmentExists())
 			{
 				if($this->_locationId === null) {
-					$result = $this->_DCIM->getLocationIdByEquipmentId($this->getEquipmentId());
-					$this->_locationId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+					$result = $this->_adapter->getLocationIdByEquipmentId($this->getEquipmentId());
+					$this->_locationId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 				}
 
 				return $this->_locationId;
@@ -175,8 +159,8 @@
 		public function getCabinetId()
 		{
 			if($this->equipmentExists()) {
-				$result = $this->_DCIM->getCabinetIdByEquipmentId($this->getEquipmentId());
-				return ($this->_DCIM->isValidReturn($result)) ? ($result) : (false);
+				$result = $this->_adapter->getCabinetIdByEquipmentId($this->getEquipmentId());
+				return ($this->_adapter->isValidReturn($result)) ? ($result) : (false);
 			}
 			else {
 				return false;
@@ -190,7 +174,7 @@
 				$cabinetId = $this->getCabinetId();
 
 				if($cabinetId !== false) {
-					$this->_cabinetApi = new Api_Cabinet($cabinetId);
+					$this->_cabinetApi = Api_Cabinet::factory($cabinetId);
 				}
 				else {
 					$this->_cabinetApi = false;
@@ -215,21 +199,20 @@
 
 				if($path !== false)
 				{
+					if($pathSeparator === false) {
+						$pathSeparator = self::SEPARATOR_PATH;
+					}
+
 					if($cabinetApi !== false)
 					{
 						$cabinetLabel = $cabinetApi->getLabel();
 
 						if($cabinetLabel !== false) {
-							$path .= self::SEPARATOR_PATH.$cabinetLabel;
+							$path .= $pathSeparator.$cabinetLabel;
 						}
 					}
 
-					if($includeLabel)
-					{
-						if($pathSeparator === false) {
-							$pathSeparator = self::SEPARATOR_PATH;
-						}
-
+					if($includeLabel) {
 						$path .= $pathSeparator.$this->getEquipmentLabel();
 					}
 				}
@@ -247,7 +230,7 @@
 			if($this->equipmentExists())
 			{
 				if($this->_position === null) {
-					$this->_position = $this->_DCIM->getUByEquipmentId($this->getEquipmentId());
+					$this->_position = $this->_adapter->getUByEquipmentId($this->getEquipmentId());
 				}
 
 				return $this->_position;
@@ -309,7 +292,7 @@
 		public function getPortId($portLabel)
 		{
 			if($this->equipmentExists()) {
-				return $this->_DCIM->getPortIdByParentEquipmentIdPortLabel($this->getEquipmentId(), $portLabel);
+				return $this->_adapter->getPortIdByParentEquipmentIdPortLabel($this->getEquipmentId(), $portLabel);
 			}
 			else {
 				return false;
@@ -328,11 +311,11 @@
 			if($this->equipmentExists())
 			{
 				if($portLabel === null) {
-					return $this->_DCIM->getPortIdsByEquipmentId($this->getEquipmentId());
+					return $this->_adapter->getPortIdsByEquipmentId($this->getEquipmentId());
 					
 				}
 				else {
-					return $this->_DCIM->getPortIdsByParentEquipmentIdPortLabel($this->getEquipmentId(), $portLabel);
+					return $this->_adapter->getPortIdsByParentEquipmentIdPortLabel($this->getEquipmentId(), $portLabel);
 				}
 			}
 			else {
@@ -355,8 +338,8 @@
 
 			foreach($portIds as $portId)
 			{
-				$result = $this->_DCIM->getConnectedPortIdByPortId($portId);
-				$nbPortId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+				$result = $this->_adapter->getConnectedPortIdByPortId($portId);
+				$nbPortId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 
 				if($nbPortId !== false) {
 					$conPortIds[$nbPortId] = $portId;
@@ -369,7 +352,7 @@
 		public function getSlotId($slotLabel)
 		{
 			if($this->equipmentExists()) {
-				return $this->_DCIM->getSlotIdByParentEquipmentIdSlotLabel($this->getEquipmentId(), $slotLabel);
+				return $this->_adapter->getSlotIdByParentEquipmentIdSlotLabel($this->getEquipmentId(), $slotLabel);
 			}
 			else {
 				return false;
@@ -385,10 +368,10 @@
 			if($this->equipmentExists())
 			{
 				if($slotLabel === null) {
-					return $this->_DCIM->getSlotIdsByEquipmentId($this->getEquipmentId());
+					return $this->_adapter->getSlotIdsByEquipmentId($this->getEquipmentId());
 				}
 				else {
-					return $this->_DCIM->getSlotIdsByParentEquipmentIdSlotLabel($this->getEquipmentId(), $slotLabel);
+					return $this->_adapter->getSlotIdsByParentEquipmentIdSlotLabel($this->getEquipmentId(), $slotLabel);
 				}
 			}
 			else {
@@ -403,8 +386,8 @@
 		public function getModuleId($slotId)
 		{
 			if($this->equipmentExists() && C\Tools::is('int&&>0', $slotId)) {
-				$result = $this->_DCIM->getEquipmentIdBySlotId($slotId);
-				return ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+				$result = $this->_adapter->getEquipmentIdBySlotId($slotId);
+				return ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 			}
 			else {
 				return false;
@@ -417,12 +400,12 @@
 		public function getCableIds()
 		{
 			$cableIds = array();
-			$portIds = $this->_DCIM->getPortIdsByEquipmentId($this->getEquipmentId());
+			$portIds = $this->_adapter->getPortIdsByEquipmentId($this->getEquipmentId());
 
 			foreach($portIds as $portId)
 			{
-				$result = $this->_DCIM->getConnectedCableIdByPortId($portId);
-				$cableId = ($this->_DCIM->isValidReturn($result)) ? ((int) $result) : (false);
+				$result = $this->_adapter->getConnectedCableIdByPortId($portId);
+				$cableId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
 
 				if($cableId !== false) {
 					$cableIds[] = $cableId;
@@ -440,9 +423,10 @@
 		  * @param $label string
 		  * @param $description string
 		  * @param $positionX int
+		  * @param $autoRegisterToStore bool
 		  * @return false|int Equipment ID or false if error has occured
 		  */
-		public function rack($cabinetName, $side, $positionU, C\Item $template, $label = null, $description = null, $positionX = 0)
+		public function rack($cabinetName, $side, $positionU, C\Item $template, $label = null, $description = null, $positionX = 0, $autoRegisterToStore = true)
 		{
 			$this->_errorMessage = null;
 
@@ -450,9 +434,9 @@
 			{
 				if($this->hasLocationId())
 				{
-					$cabinetId = $this->_DCIM->getCabinetIdByLocationIdCabinetLabel($this->getLocationId(), $cabinetName);
+					$cabinetId = $this->_adapter->getCabinetIdByLocationIdCabinetLabel($this->getLocationId(), $cabinetName);
 
-					if($this->_DCIM->isValidReturn($cabinetId))
+					if($this->_adapter->isValidReturn($cabinetId))
 					{
 						if($side === Api_Cabinet::SIDE_FRONT || $side === Api_Cabinet::SIDE_REAR)
 						{
@@ -461,7 +445,7 @@
 							{
 								$equipmentTemplate = $template->chassis;
 
-								if($this->_DCIM->templateExists($equipmentTemplate))
+								if($this->_adapter->templateExists($equipmentTemplate))
 								{
 									if($label === null && $this->hasEquipmentLabel()) {
 										$label = $this->getEquipmentLabel();
@@ -476,7 +460,7 @@
 										if(C\Tools::is('int&&>=0', $positionX))
 										{
 											try {
-												$equipmentId = $this->_DCIM->addEquipmentToCabinetId($cabinetId, $side, $positionU, $positionX, $equipmentTemplate, $label, $description);
+												$equipmentId = $this->_adapter->addEquipmentToCabinetId($cabinetId, $side, $positionU, $positionX, $equipmentTemplate, $label, $description);
 											}
 											catch(E\Message $e) {
 												$this->_errorMessage = "Unable to rack equipment '".$equipmentTemplate."' '".$label."' to position '".$positionU."'U in DCIM: ".$e->getMessage();
@@ -487,6 +471,10 @@
 											{
 												$this->_hardReset(false);
 												$this->_setObjectId($equipmentId);
+
+												if($autoRegisterToStore) {
+													$this->_registerToStore();
+												}
 
 												foreach(array('card', 'fan', 'power') as $extensionName)
 												{
@@ -592,9 +580,9 @@
 		{
 			if($this->equipmentExists())
 			{
-				if($this->_DCIM->templateExists($templateName))
+				if($this->_adapter->templateExists($templateName))
 				{
-					$slotIds = $this->_DCIM->getSlotIdsByParentEquipmentIdSlotLabel($equipmentId, $slotLabel);
+					$slotIds = $this->_adapter->getSlotIdsByParentEquipmentIdSlotLabel($equipmentId, $slotLabel);
 
 					switch(count($slotIds))
 					{
@@ -613,7 +601,7 @@
 								}
 
 								try{
-									$equipmentId = $this->_DCIM->addEquipmentToSlotId($slotId, $templateName, $moduleLabel);
+									$equipmentId = $this->_adapter->addEquipmentToSlotId($slotId, $templateName, $moduleLabel);
 								}
 								catch(E\Message $e) {
 									$this->_errorMessage = "Unable to rack equipment '".$templateName."' '".$moduleLabel."' to slot '".$slotLabel."' in DCIM: ".$e->getMessage();
@@ -659,12 +647,12 @@
 		protected function _renameSlot($equipmentId, $currentLabel, $newLabel)
 		{
 
-			$slotId = $this->_DCIM->getSlotIdByEquipmentIdSlotLabel($equipmentId, $currentLabel);
+			$slotId = $this->_adapter->getSlotIdByEquipmentIdSlotLabel($equipmentId, $currentLabel);
 
-			if($this->_DCIM->isValidReturn($slotId))
+			if($this->_adapter->isValidReturn($slotId))
 			{
 				try {
-					$status = $this->_DCIM->updateSlotInfos($slotId, $newLabel);
+					$status = $this->_adapter->updateSlotInfos($slotId, $newLabel);
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to rename slot from DCIM: ".$e->getMessage();
@@ -690,12 +678,12 @@
 
 		protected function _renamePort($equipmentId, $currentLabel, $newLabel)
 		{
-			$portId = $this->_DCIM->getPortIdByEquipmentIdPortLabel($equipmentId, $currentLabel);
+			$portId = $this->_adapter->getPortIdByEquipmentIdPortLabel($equipmentId, $currentLabel);
 
-			if($this->_DCIM->isValidReturn($portId))
+			if($this->_adapter->isValidReturn($portId))
 			{
 				try {
-					$status = $this->_DCIM->updatePortInfos($portId, $newLabel);
+					$status = $this->_adapter->updatePortInfos($portId, $newLabel);
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to rename port from DCIM: ".$e->getMessage();
@@ -749,7 +737,7 @@
 			if($this->equipmentExists())
 			{
 				try {
-					$status = $this->_DCIM->updateEquipmentInfos($this->getEquipmentId(), $label, $description);
+					$status = $this->_adapter->updateEquipmentInfos($this->getEquipmentId(), $label, $description);
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to update equipment informations from DCIM: ".$e->getMessage();
@@ -778,7 +766,7 @@
 				$snFieldName = $this->getUserAttrField('default', 'serialNumber');
 
 				try {
-					$status = $this->_DCIM->setUserAttrByEquipmentId($this->getEquipmentId(), $snFieldName, $serialNumber);
+					$status = $this->_adapter->setUserAttrByEquipmentId($this->getEquipmentId(), $snFieldName, $serialNumber);
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to set equipment serial number in DCIM: ".$e->getMessage();
@@ -804,13 +792,14 @@
 			if($this->equipmentExists())
 			{
 				try {
-					$status = $this->_DCIM->removeEquipment($this->getEquipmentId());
+					$status = $this->_adapter->removeEquipment($this->getEquipmentId());
 				}
 				catch(E\Message $e) {
 					$this->_errorMessage = "Unable to remove equipment from DCIM: ".$e->getMessage();
 					$status = false;
 				}
 
+				$this->_unregisterFromStore();
 				$this->_hardReset();
 				return $status;
 			}
@@ -924,7 +913,7 @@
 
 			if($reportName !== false)
 			{
-				$results = self::$_DCIM->getReportResults($reportName, $args);
+				$results = self::_getAdapter()->getReportResults($reportName, $args);
 
 				if($results !== false && $firstLevel == true)
 				{
@@ -932,6 +921,10 @@
 					{
 						if($result['parent_entity_id'] !== '') {
 							unset($results[$index]);
+						}
+						else {
+							// @todo make it directly from report: Front, Rear --> front, rear
+							$results[$index]['position_side'] = mb_strtolower($result['position_side']);
 						}
 					}
 				}

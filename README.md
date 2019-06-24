@@ -28,8 +28,7 @@ __*https://launchpad.net/~ondrej/+archive/ubuntu/php*__
 * apt update
 
 You have to install a PHP version >= 7.1:
-* apt install php7.3-cli php7.3-soap php7.3-mbstring php7.3-readline php7.3-curl  
-__Do not forget to install php7.3-soap__
+* apt install php7.3-cli php7.3-mbstring php7.3-readline php7.3-soap php7.3-curl
 
 For MacOS users which use PHP 7.3, there is an issue with PCRE.
 You have to add this configuration in your php.ini:
@@ -48,11 +47,11 @@ Download last PHAR release and its key from [releases](https://github.com/cloudw
 Wizard help:
 `$ php php-cli-shell.phar --help`
 
-Create firewall configuration with command:
+Create PATCHMANAGER configuration with command:
 `$ php php-cli-shell.phar configuration:application:factory dcim`  
 *For more informations about configuration file, see 'CONFIGURATION FILE' section*
 
-Create firewall launcher with command:
+Create PATCHMANAGER launcher with command:
 `$ php php-cli-shell.phar launcher:application:factory dcim`
 
 __*The PHAR contains all PHP-CLI SHELL components (Base, DCIM, IPAM and Firewall)*__

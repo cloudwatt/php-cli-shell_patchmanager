@@ -44,14 +44,14 @@ Download last PHAR release and its key from [releases](https://github.com/cloudw
 
 ![wizard](documentation/readme/wizard.gif)
 
-Wizard help:
+Print wizard help:  
 `$ php php-cli-shell.phar --help`
 
-Create PATCHMANAGER configuration with command:
+Create PATCHMANAGER configuration with command:  
 `$ php php-cli-shell.phar configuration:application:factory dcim`  
 *For more informations about configuration file, see 'CONFIGURATION FILE' section*
 
-Create PATCHMANAGER launcher with command:
+Create PATCHMANAGER launcher with command:  
 `$ php php-cli-shell.phar launcher:application:factory dcim`
 
 __*The PHAR contains all PHP-CLI SHELL components (Base, DCIM, IPAM and Firewall)*__

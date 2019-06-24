@@ -3,14 +3,10 @@
 
 	use Core as C;
 
-	abstract class Equipment implements \ArrayAccess, \IteratorAggregate, \Countable
+	abstract class Equipment
 	{
-		protected static $_environments;
-
-		/**
-		  * @var Addon\Dcim\Api_Equipment
-		  */
-		protected $_equipmentApi = null;
+		const PORT_INTERFACE_SEPARATOR = Equipment_Port::INTERFACE_SEPARATOR;
+		const INT_INTERFACE_SEPARATOR = Equipment_Interface::INTERFACE_SEPARATOR;
 
 		/**
 		  * @var int
@@ -18,37 +14,37 @@
 		protected $_equipmentId = null;
 
 		/**
-		  * @var Addon\Dcim\Equipment_Slot[]
+		  * @var Addon\Dcim\Api_Equipment
 		  */
-		protected $_slots = array();
+		protected $_equipmentApi = null;
 
 		/**
-		  * @var Addon\Dcim\Equipment_Port[]
+		  * @var Addon\Dcim\Equipment_Module[]
 		  */
-		protected $_ports = array();
+		protected $_modules = array();
 
 		/**
 		  * @var Addon\Dcim\Equipment_Interface[]
 		  */
-		protected $_ints = array();
+		protected $_interfaces = array();
 
 		/**
 		  * Slot datas
 		  * @var array
 		  */
-		protected $_slotsDatas = null;
+		protected $_dataSlots = null;
 
 		/**
 		  * Port datas
 		  * @var array
 		  */
-		protected $_portsDatas = null;
+		protected $_dataPorts = null;
 
 		/**
 		  * Interface datas
 		  * @var array
 		  */
-		protected $_intsDatas = null;
+		protected $_dataInterfaces = null;
 
 		/**
 		  * Datas
@@ -56,104 +52,411 @@
 		  */
 		protected $_datas = array();
 
+		/**
+		  * @var int
+		  */
+		protected $_debug = 3;		// 0 = disable, 1 = info, 2 = info+, 3 = info++
 
-		public function __construct($equipmentId)
+
+		public function __construct($equipmentId, Api_Equipment $apiEquipment = null)
 		{
-			$this->_equipmentId = (int) $equipmentId;
-			$this->_equipmentApi = new Api_Equipment($this->_equipmentId);		// /!\ Ne pas passer null
-		}
+			$this->_equipmentId = (int) $equipmentId;	// Test equipmentId or cast to INT
 
-		public static function getInstance($equipmentId)
-		{
-			$Api_Equipment = new Api_Equipment($equipmentId);
-			$hostName = self::_getHostName($Api_Equipment);
-			return (static::isEquipment($hostName)) ? (new static($equipmentId)) : (false);
-		}
-
-		public function declareSlot(Equipment_Slot $Equipment_Slot)
-		{
-			$slotKey = $Equipment_Slot->getSlotKey();
-
-			if(array_key_exists($slotKey, $this->_slots)) {
-				throw new Exception("Ce slot est déjà déclaré @ ".$slotKey, E_USER_ERROR);
+			if($apiEquipment !== null && $apiEquipment->id === $this->_equipmentId) {
+				$this->_equipmentApi = $apiEquipment;
+			}
+			else {
+				$this->_equipmentApi = new Api_Equipment($this->_equipmentId);
 			}
 
-			$this->_slots[$slotKey] = $Equipment_Slot;
-			return $this;
+			$this->_init();
 		}
 
-		abstract public function declarePort(Equipment_Port $Equipment_Port);
-
-		public function undeclarePort(Equipment_Port $Equipment_Port)
+		protected function _init()
 		{
-			$portKey = $Equipment_Port->getPortKey();
-			unset($this->{$portKey});
-
-			$this->_datas = array();
-			$this->_portsDatas = null;
-			$this->_intsDatas = null;
-
-			return $this;
 		}
-
-		public function declareInterface(Equipment_Interface $Equipment_Interface)
-		{
-			$intKey = $Equipment_Interface->getIntKey();
-			$intIndex = $Equipment_Interface->getIntIndex();
-
-			if($intIndex !== false) { $intKey .= '__'.$intIndex; }
-
-			if(array_key_exists($intKey, $this->_ints)) {
-				throw new Exception("Cette interface est déjà déclarée @ ".$intKey, E_USER_ERROR);
-			}
-
-			$this->_ints[$intKey] = $Equipment_Interface;
-			return $this;
-		}
-
-		public function getSlot($slotKey)
-		{
-			return (array_key_exists($slotKey, $this->_slots)) ? ($this->_slots[$slotKey]) : (false);
-		}
-
-		public function getPort($portKey)
-		{
-			return (array_key_exists($portKey, $this->_ports)) ? ($this->_ports[$portKey]) : (false);
-		}
-
-		// /!\ On peut demander une interface physique comme virtuelle
-		public function getInterface($intKey, $intIndex = false)
-		{
-			// /!\ On doit traiter les 2 cas
-			$intKey = str_replace(Equipment_Interface_Physical::INT_SEPARATOR, '__', $intKey, $countPort);
-			$intKey = str_replace(Equipment_Interface_Virtual::INT_SEPARATOR, '__', $intKey, $countInt);
-
-			if($countPort === 0 && $countInt === 0 && $intIndex !== false) {
-				$intKey .= '__'.$intIndex;
-			}
-
-			return (array_key_exists($intKey, $this->_ints)) ? ($this->_ints[$intKey]) : (false);
-		}
-
-		/*public function getPortKeys()
-		{
-			return array_keys($this->ports);
-		}
-
-		public function getIntKeys()
-		{
-			return array_keys($this->ints);
-		}*/
 
 		public function getEquipmentId()
 		{
 			return $this->_equipmentId;
 		}
+
+		public function getEquipmentApi()
+		{
+			return $this->_equipmentApi;
+		}
+
+		/**
+		  * @param mixed $attribute
+		  * @return int Module ID
+		  */
+		protected function _retrieveModuleId($attribute)
+		{
+			if($attribute instanceof Equipment_Slot) {
+				$moduleId = $attribute->getModuleId();
+			}
+			elseif($attribute instanceof Equipment_Port) {
+				$moduleId = $attribute->getModuleId();
+			}
+			elseif($attribute instanceof Equipment_Interface)
+			{
+				if($attribute->isPhysical()) {
+					$Equipment_Port = $attribute->retrievePort();
+					$moduleId = $Equipment_Port->getModuleId();
+				}
+				else {
+					throw new Exception("It is not possible to retrieve module from virtual interface '".$attribute->interfaceName."'", E_USER_ERROR);
+				}
+			}
+			elseif($attribute instanceof Equipment_Module) {
+				$moduleId = $attribute->getModuleId();
+			}
+			elseif(C\Tools::is('int&&>0', $attribute)) {
+				$moduleId = (int) $attribute;
+			}
+			elseif($attribute === null) {
+				$moduleId = false;
+			}
+			else {
+				throw new Exception("Can not retrieve module, attribute '".gettype($attribute)."' is not compatible", E_USER_ERROR);
+			}
+
+			return ($moduleId !== false) ? ($moduleId) : ($this->equipmentId);
+		}
+
+		/**
+		  * @param mixed $attribute
+		  * @return Addon\Dcim\Equipment_Module
+		  */
+		protected function _retrieveModule($attribute)
+		{
+			$moduleId = $this->_retrieveModuleId($attribute);
+
+			if(!array_key_exists($moduleId, $this->_modules)) {
+				$this->_modules[$moduleId] = new Equipment_Module($this, $moduleId);
+			}
+
+			return $this->_modules[$moduleId];
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Slot $name Slot object or key
+		  * @return bool
+		  */
+		public function slotExists($name)
+		{
+			return ($this->retrieveSlot($name) !== false);
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Slot $slot
+		  * @return $this
+		  */
+		public function declareSlot(Equipment_Slot $slot)
+		{
+			$Equipment_Module = $this->_retrieveModule($slot);
+			$Equipment_Module->declareSlot($slot);
+			$this->_slotCleaner();
+			return $this;
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Slot $name Slot object or key
+		  * @return false|Addon\Dcim\Equipment_Slot
+		  */
+		public function retrieveSlot($name)
+		{
+			if(is_object($name))
+			{
+				if($name instanceof Equipment_Slot) {
+					$Equipment_Module = $this->_retrieveModule($name);
+					return $Equipment_Module->retrieveSlot($name);
+				}
+				else {
+					throw new Exception("Slot name must be a string or an Equipment_Slot object, '".gettype($name)."' given", E_USER_ERROR);
+				}
+			}
+			else
+			{
+				foreach($this->_modules as $Equipment_Module)
+				{
+					$result = $Equipment_Module->retrieveSlot($name);
+
+					if($result !== false) {
+						return $result;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		  * @return Addon\Dcim\Equipment_Slot[] Slot objects
+		  */
+		public function getSlots()
+		{
+			$slots = array();
+
+			foreach($this->_modules as $Equipment_Module) {
+				$results = $Equipment_Module->getSlots();
+				$results = array_values($results);
+				$slots = array_merge($slots, $results);
+			}
+
+			return $slots;
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Slot $slot
+		  * @return $this
+		  */
+		public function undeclareSlot(Equipment_Slot $slot)
+		{
+			$Equipment_Module = $this->_retrieveModule($slot);
+			$Equipment_Module->undeclareSlot($slot);
+			$this->_slotCleaner();
+			return $this;
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Port $name Port object or key
+		  * @return bool
+		  */
+		public function portExists($name)
+		{
+			return ($this->retrievePort($name) !== false);
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Port $port
+		  * @return $this
+		  */
+		public function declarePort(Equipment_Port $port)
+		{
+			/**
+			  * Un port est une interface physique!
+			  *
+			  * Un port est obligatoirement lié à une interface virtuelle car
+			  * il permet d'interconnecter directement deux équipements
+			  *
+			  * Par conséquent, un port est l'interface entre deux équipements
+			  */
+			$this->_newInterface($port);
+
+			$Equipment_Module = $this->_retrieveModule($port);
+			$Equipment_Module->declarePort($port);
+			$this->_portCleaner();
+			return $this;
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Port $name Port object or key
+		  * @return false|Addon\Dcim\Equipment_Port
+		  */
+		public function retrievePort($name)
+		{
+			if(is_object($name))
+			{
+				if($name instanceof Equipment_Port) {
+					$Equipment_Module = $this->_retrieveModule($name);
+					return $Equipment_Module->retrievePort($name);
+				}
+				else {
+					throw new Exception("Port name must be a string or an Equipment_Port object, '".gettype($name)."' given", E_USER_ERROR);
+				}
+			}
+			else
+			{
+				foreach($this->_modules as $Equipment_Module)
+				{
+					$result = $Equipment_Module->retrievePort($name);
+
+					if($result !== false) {
+						return $result;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		  * @return Addon\Dcim\Equipment_Port[] Port objects
+		  */
+		public function getPorts()
+		{
+			$ports = array();
+
+			foreach($this->_modules as $Equipment_Module) {
+				$results = $Equipment_Module->getPorts();
+				$results = array_values($results);
+				$ports = array_merge($ports, $results);
+			}
+
+			return $ports;
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Port $port
+		  * @return $this
+		  */
+		public function undeclarePort(Equipment_Port $port)
+		{
+			$Equipment_Module = $this->_retrieveModule($port);
+			$Equipment_Module->undeclarePort($port);
+			$this->_portCleaner();
+			return $this;
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Port $equipmentPort
+		  * @return void
+		  */
+		protected function _newInterface(Equipment_Port $equipmentPort)
+		{
+			$Equipment_Interface = new Equipment_Interface($equipmentPort);
+			$equipmentPort->setInterface($Equipment_Interface);
+			$this->declareInterface($Equipment_Interface);
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Interface $name Interface object or ID
+		  * @param null|int $index Interface index
+		  * @return bool
+		  */
+		public function interfaceExists($name, $index = null)
+		{
+			return ($this->retrieveInterface($name, $index) !== false);
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Interface $interface
+		  * @return $this
+		  */
+		public function declareInterface(Equipment_Interface $interface)
+		{		
+			if($interface->isPhysical())
+			{
+				$Equipment_Module = $this->_retrieveModule($interface);
+				$Equipment_Module->declareInterface($interface);
+
+				/**
+				  * On peut rajouter des interfaces virtuelles sans avoir à nettoyer
+				  * car certaines interfaces virtuelles peuvent dépendre des interfaces physiques
+				  */
+				$this->_interfaceCleaner();
+			}
+			else
+			{
+				$interfaceId = $interface->getInterfaceId();
+
+				if(array_key_exists($interfaceId, $this->_interfaces)) {
+					throw new Exception("L'interface '".$interface->getInterfaceName()."' est déjà déclarée sous l'ID '".$interfaceId."'", E_USER_ERROR);
+				}
+
+				$this->_interfaces[$interfaceId] = $interface;
+			}
+
+			return $this;
+		}
+
+		/**
+		  * @param string|Addon\Dcim\Equipment_Interface $name Interface object or ID
+		  * @param null|int $index Interface index
+		  * @return false|Addon\Dcim\Equipment_Interface
+		  */
+		public function retrieveInterface($name, $index = null)
+		{
+			if(is_object($name))
+			{
+				if($name instanceof Equipment_Interface)
+				{
+					if($name->isPhysical()) {
+						$Equipment_Module = $this->_retrieveModule($name);
+						return $Equipment_Module->retrieveInterface($name);
+					}
+					else {
+						$name = $name->getInterfaceId();
+					}
+				}
+				else {
+					throw new Exception("Interface name must be a string or an Equipment_Interface object, '".gettype($name)."' given", E_USER_ERROR);
+				}
+			}
+			else
+			{
+				foreach($this->_modules as $Equipment_Module)
+				{
+					$result = $Equipment_Module->retrieveInterface($name, $index);
+
+					if($result !== false) {
+						return $result;
+					}
+				}
+
+				if($index !== null) {
+					$name .= static::INT_INTERFACE_SEPARATOR.$index;
+				}
+			}
+
+			return (array_key_exists($name, $this->_interfaces)) ? ($this->_interfaces[$name]) : (false);
+		}
+
+		/**
+		  * @return Addon\Dcim\Equipment_Interface[]
+		  */
+		public function getInterfaces()
+		{
+			$interfaces = array();
+
+			foreach($this->_modules as $Equipment_Module) {
+				$results = $Equipment_Module->getInterfaces();
+				$results = array_values($results);
+				$interfaces = array_merge($interfaces, $results);
+			}
+
+			// Ajouter à la fin les interfaces virtuelles
+			$thisInterfaces = array_values($this->_interfaces);
+			$interfaces = array_merge($interfaces, $thisInterfaces);
+
+			return $interfaces;
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Interface $interface
+		  * @return $this
+		  */
+		public function undeclareInterface(Equipment_Interface $interface)
+		{
+			if($interface->isPhysical())
+			{
+				$Equipment_Module = $this->_retrieveModule($interface);
+				$Equipment_Module->undeclareInterface($interface);
+
+				/**
+				  * On peut retirer des interfaces virtuelles sans avoir à nettoyer
+				  * car certaines interfaces virtuelles peuvent dépendre
+				  * des interfaces physiques mais pas l'inverse
+				  */
+				$this->_interfaceCleaner();
+			}
+			else
+			{
+				$interface = $this->retrieveInterface($interface);
+
+				if($interface !== false) {
+					unset($this->_interfaces[$interface->getInterfaceId()]);
+				}
+			}
+
+			return $this;
+		}
 		
 		public function getHostName()
 		{
 			if(!array_key_exists('hostName', $this->_datas)) {
-				$this->_datas['hostName'] = self::_getHostName($this->_equipmentApi);
+				$this->_datas['hostName'] = self::_formatEquipmentLabel($this->_equipmentApi);
 			}
 
 			return $this->_datas['hostName'];
@@ -161,57 +464,81 @@
 
 		protected function _getSlots()
 		{
-			if($this->_slotsDatas === null)
+			if($this->_dataSlots === null)
 			{
-				$this->_slotsDatas = array();		// /!\ Important
+				$this->_dataSlots = array();		// /!\ Important
 
+				/**
+				  * /!\ Si deux slots possèdent le même nom
+				  * alors les données de tous ces slots seront mergées
+				  *
+				  * @todo a corriger, trouver une solution
+				  * Si doublon alors créer section modules puis
+				  * ajouter les datas par module (name) dans cette section
+				  */
 				foreach($this->slots as $slot) {
-					C\Tools::merge($this->_slotsDatas, $slot->getDatas());
+					C\Tools::merge($this->_dataSlots, $slot->getDatas());
 				}
 			}
 
-			return $this->_slotsDatas;
+			return $this->_dataSlots;
 		}
-		
+
 		protected function _getPorts()
 		{
-			if($this->_portsDatas === null)
+			if($this->_dataPorts === null)
 			{
-				$this->_portsDatas = array();		// /!\ Important
+				$this->_dataPorts = array();		// /!\ Important
 
+				/**
+				  * /!\ Si deux ports possèdent le même nom
+				  * alors les données de tous ces ports seront mergées
+				  *
+				  * @todo a corriger, trouver une solution
+				  * Si doublon alors créer section modules puis
+				  * ajouter les datas par module (name) dans cette section
+				  */
 				foreach($this->ports as $port) {
 					$datas = $port->getDatas();
 					$nbDatas = $port->getNeighborDatas();
 					$allDatas = array_merge_recursive($datas, $nbDatas);
-					C\Tools::merge($this->_portsDatas, $allDatas);
+					C\Tools::merge($this->_dataPorts, $allDatas);
 				}
 			}
 
-			return $this->_portsDatas;
+			return $this->_dataPorts;
 		}
 
 		/**
 		  * Retourne les interfaces suivantes:
 		  * Port, LA, L3
-		  **/
-		protected function _getInts()
+		  */
+		protected function _getInterfaces()
 		{
-			if($this->_intsDatas === null)
+			if($this->_dataInterfaces === null)
 			{
-				$this->_intsDatas = array();		// /!\ Important
+				$this->_dataInterfaces = array();		// /!\ Important
 
-				foreach($this->ints as $int) {
-					$datas = $int->getDatas();
-					$nbDatas = $int->getNeighborDatas();
+				/**
+				  * /!\ Si deux interfaces possèdent le même nom
+				  * alors les données de toutes ces interfaces seront mergées
+				  *
+				  * @todo a corriger, trouver une solution
+				  * Si doublon alors créer section modules puis
+				  * ajouter les datas par module (name) dans cette section
+				  */
+				foreach($this->interfaces as $interface) {
+					$datas = $interface->getDatas();
+					$nbDatas = $interface->getNeighborDatas();
 					$allDatas = array_merge_recursive($datas, $nbDatas);
-					C\Tools::merge($this->_intsDatas, $allDatas);
+					C\Tools::merge($this->_dataInterfaces, $allDatas);
 				}
 			}
 
-			return $this->_intsDatas;
+			return $this->_dataInterfaces;
 		}
 
-		public function getInterfaces()
+		public function getConfiguration()
 		{
 			if(!array_key_exists('interfaces', $this->_datas))
 			{
@@ -219,11 +546,6 @@
 
 				$slotDatas = $this->_getSlots();
 				$portDatas = $this->_getPorts();
-				$intDatas = $this->_getInts();
-
-/*echo "\r\nDEBUG 0\r\n\t";var_dump($slotDatas);
-echo "\r\n\t";var_dump($portDatas);
-echo "\r\n\t";var_dump($intDatas);echo "\r\nEND 0\r\n";*/
 
 				$slotKeys = array_keys($slotDatas);
 				$portKeys = array_keys($portDatas);
@@ -234,8 +556,8 @@ echo "\r\n\t";var_dump($intDatas);echo "\r\nEND 0\r\n";*/
 				  */
 				foreach($dualSlotPort as $key)
 				{
-					$slotIsEmpty = $this->getSlot($key)->isEmpty();
-					$portIsConnected = $this->getPort($key)->isConnected();
+					$slotIsEmpty = $this->retrieveSlot($key)->isEmpty();
+					$portIsConnected = $this->retrievePort($key)->isConnected();
 
 					if($slotIsEmpty && !$portIsConnected) {
 						unset($portDatas[$key]);
@@ -247,11 +569,12 @@ echo "\r\n\t";var_dump($intDatas);echo "\r\nEND 0\r\n";*/
 						unset($slotDatas[$key]);
 					}
 					else {
-						throw new Exception("Un dual port slot ne peut avoir qu'un connecteur actif à la fois", E_USER_ERROR);
+						throw new Exception("Un dual slot/port ne peut avoir qu'un connecteur actif à la fois", E_USER_ERROR);
 					}
 				}
 
 				$this->_datas['interfaces'] = $slotDatas;
+				$interfaceDatas = $this->_getInterfaces();
 
 				/**
 				  * /!\ Les datas de interface sont prioritaires sur celles de port
@@ -262,232 +585,142 @@ echo "\r\n\t";var_dump($intDatas);echo "\r\nEND 0\r\n";*/
 				  *
 				  * /!\ On garde les clés des interfaces donc attention au séparateur
 				  */
-				foreach($intDatas as $key => &$datas)
+				foreach($interfaceDatas as $interfaceId => &$datas)
 				{
-					$key = str_replace(Equipment_Interface_Virtual::INT_SEPARATOR, Equipment_Interface_Physical::INT_SEPARATOR, $key);
+					$Equipment_Interface = $this->retrieveInterface($interfaceId);
+					$portKey = $Equipment_Interface->getPortKey();
 
-					if(array_key_exists($key, $portDatas)) {
-						$datas = array_merge($portDatas[$key], $datas);
+					if(array_key_exists($portKey, $portDatas)) {
+						$datas = array_merge($portDatas[$portKey], $datas);
 					}
 				}
 				unset($datas);
 
-				C\Tools::merge($this->_datas['interfaces'], $intDatas);
+				/**
+				  * Les slots n'ont pas d'interfaces donc une interface
+				  * ne peut pas écraser les données provenant d'un slot
+				  */
+				C\Tools::merge($this->_datas['interfaces'], $interfaceDatas);
 			}
 
+			/**
+			  * /!\ Du moins prioritaire au plus
+			  *
+			  * 1. Slot datas			+
+			  * 2. Port datas			++
+			  * 3. Interface datas		+++
+			  */
 			return $this->_datas['interfaces'];
 		}
 		
 		public function getDatas()
 		{
-			$this->getHostname();
-			$this->getInterfaces();
+			$this->getHostName();
+			$this->getConfiguration();
 
 			return $this->_datas;
 		}
 
-		public function offsetSet($offset, $value)
+		public function printDebugDatas()
 		{
-			if($value instanceof Equipment_Port) {
-				$this->declarePort($value);
-			}
+			$slotDatas = $this->_getSlots();
+			$portDatas = $this->_getPorts();
+			$interfaceDatas = $this->_getInterfaces();
+
+			$header = "-------------------- ".$this->equipmentApi->label." --------------------";
+			C\Tools::e(PHP_EOL.$header, 'orange');
+			C\Tools::e(PHP_EOL."\tSlot datas:", 'orange');
+			C\Tools::e(PHP_EOL.print_r($slotDatas, true).PHP_EOL, 'orange');
+			C\Tools::e(PHP_EOL."\tPort datas:", 'orange');
+			C\Tools::e(PHP_EOL.print_r($portDatas, true).PHP_EOL, 'orange');
+			C\Tools::e(PHP_EOL."\tInterface datas:", 'orange');
+			C\Tools::e(PHP_EOL.print_r($interfaceDatas, true).PHP_EOL, 'orange');
+			C\Tools::e(PHP_EOL.str_repeat('-', mb_strlen($header)), 'orange');
 		}
 
-		public function offsetExists($offset)
+		public function reset()
 		{
-			return $this->issetPort($offset);
+			$this->_modules = array();
+			$this->_interfaces = array();
+			$this->resetDatas();
+			return $this;
 		}
 
-		public function offsetUnset($offset)
+		public function resetDatas()
 		{
-			$this->unsetPort($offset);
+			$this->_datas = array();
+			$this->_dataSlots = null;
+			$this->_dataPorts = null;
+			$this->_dataInterfaces = null;
+			return $this;
 		}
 
-		public function offsetGet($offset)
+		protected function _slotCleaner()
 		{
-			return ($this->issetPort($offset)) ? ($this->_ports[$offset]) : (null);
+			$this->_dataSlots = null;
+			$this->_portCleaner();
 		}
 
-		public function getIterator()
+		protected function _portCleaner()
 		{
-			return new \ArrayIterator($this->_ports);
+			$this->_dataPorts = null;
+			$this->_interfaceCleaner();
 		}
 
-		public function count()
+		protected function _interfaceCleaner()
 		{
-			return count($this->_ports);
+			$this->_dataInterfaces = null;
+			$this->_datas = array();
 		}
 
 		public function __get($name)
 		{
 			switch($name)
 			{
+				case 'id':
+				case 'equipmentId':
+					return $this->getEquipmentId();
+				case 'api':
+				case 'equipmentApi':
+					return $this->getEquipmentApi();
+				case 'name':
+				case 'equipmentName':
+					return $this->getHostName();
 				case 'slots':
-					return $this->_slots;
+					return $this->getSlots();
 				case 'ports':
-					return $this->_ports;
-				case 'ints':
-					return $this->_ints;
+					return $this->getPorts();
+				case 'interfaces':
+					return $this->getInterfaces();
 				default:
-					return $this->getPort($name);
+					throw new Exception("This attribute '".$name."' does not exist", E_USER_ERROR);
 			}
 		}
 
-		public function __set($name, $value)
+		protected static function _formatEquipmentLabel(Api_Equipment $Api_Equipment)
 		{
-			if((is_object($value)) && $value instanceof Equipment_Port) {
-				$this->declarePort($value);
-			}
-		}
+			$equipmentLabel = $Api_Equipment->getEquipmentLabel();
 
-		public function __isset($name)
-		{
-			return $this->issetPort($name);
-		}
-
-		public function __unset($name)
-		{
-			$this->unsetPort($name);
-		}
-
-		public function issetSlot($name)
-		{
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Slot) {
-					$name = $name->getSlotKey();
-				}
-				else {
-					throw new Exception("Slot name must be a string or an Equipment_Slot object", E_USER_ERROR);
-				}
-			}
-
-			return (array_key_exists($name, $this->_slots));
-		}
-
-		public function issetPort($name)
-		{
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Port) {
-					$name = $name->getPortKey();
-				}
-				else {
-					throw new Exception("Port name must be a string or an Equipment_Port object", E_USER_ERROR);
-				}
-			}
-
-			return (array_key_exists($name, $this->_ports));
-		}
-
-		public function issetInt($name)
-		{
-			return $this->issetInterface($name);
-		}
-
-		public function issetInterface($name)
-		{
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Interface) {
-					$name = $name->getIntKey();
-				}
-				else {
-					throw new Exception("Interface name must be a string or an Equipment_Interface object", E_USER_ERROR);
-				}
-			}
-
-			return (array_key_exists($name, $this->_ints));
-		}
-
-		// @todo a utiliser ou a supprimer
-		/*public function isset($object)
-		{
-			$ReflectionClass = new \ReflectionClass($object);
-			$ReflectionClass = $ReflectionClass->getParentClass();
-
-			switch($ReflectionClass->getShortName())
-			{
-				case 'Equipment_Slot':
-					return $this->issetSlot($object);
-				case 'Equipment_Port':
-					return $this->issetPort($object);
-				case 'Equipment_Interface':
-					return $this->issetInterface($object);
-				default:
-					throw new Exception('Cet object "'.get_class($object).'" n\'est pas reconnu.', E_USER_ERROR);
-			}
-		}*/
-
-		public function unsetSlot($name)
-		{
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Slot) {
-					$name = $name->getSlotKey();
-				}
-				else {
-					throw new Exception("Slot name must be a string or an Equipment_Slot object", E_USER_ERROR);
-				}
-			}
-
-			unset($this->_slots[$name]);
-			return $this;
-		}
-
-		public function unsetPort($name)
-		{		
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Port) {
-					$name = $name->getPortKey();
-				}
-				else {
-					throw new Exception("Port name must be a string or an Equipment_Port object", E_USER_ERROR);
-				}
-			}
-
-			unset($this->_ports[$name]);
-			return $this;
-		}
-
-		public function unsetInt($name)
-		{
-			return $this->unsetInterface($name);
-		}
-
-		public function unsetInterface($name)
-		{
-			if(is_object($name))
-			{
-				if($name instanceof Equipment_Interface) {
-					$name = $name->getIntKey();
-				}
-				else {
-					throw new Exception("Interface name must be a string or an Equipment_Interface object", E_USER_ERROR);
-				}
-			}
-
-			unset($this->_ints[$name]);
-			return $this;
-		}
-
-		protected static function _getHostName(Api_Equipment $Api_Equipment)
-		{
-			$hostName = $Api_Equipment->getEquipmentLabel();
-
-			if($hostName === false) {
+			if($equipmentLabel === false) {
 				$equipmentId = $Api_Equipment->getEquipmentId();
-				throw new Exception("Impossible de résoudre le label pour l'équipement ID \"".$equipmentId."\"", E_USER_ERROR);
+				throw new Exception("Impossible de résoudre le label pour l'équipement ID '".$equipmentId."'", E_USER_ERROR);
 			}
 
-			return current(explode('.', $hostName, 2));
+			return current(explode('.', $equipmentLabel, 2));
 		}
 
-		abstract public static function isEquipment($label);
-
-		public static function setEnvs(array $environments)
+		public function debug($debug)
 		{
-			self::$_environments = $environments;
+			if($debug === true) {
+				$this->_debug = 3;
+			}
+			elseif($debug === false) {
+				$this->_debug = 0;
+			}
+			elseif(C\Tools::is('int&&>0', $debug)) {
+				$this->_debug = $debug;
+			}
+
+			return $this->_debug;
 		}
 	}

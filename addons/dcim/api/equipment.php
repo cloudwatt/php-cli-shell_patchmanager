@@ -385,13 +385,16 @@
 		  */
 		public function getModuleId($slotId)
 		{
-			if($this->equipmentExists() && C\Tools::is('int&&>0', $slotId)) {
+			if($this->equipmentExists() && C\Tools::is('int&&>0', $slotId))
+			{
 				$result = $this->_adapter->getEquipmentIdBySlotId($slotId);
-				return ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
+
+				if($this->_adapter->isValidReturn($result)) {
+					return (int) $result;
+				}
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
 
 		/**

@@ -1,10 +1,12 @@
-# PHP-CLI SHELL for PATCHMANAGER
+PHP-CLI SHELL for PATCHMANAGER
+-------------------
 
 This repository is the addon for PHP-CLI SHELL about PATCHMANAGER service.  
 You have to use base PHP-CLI SHELL project that is here: https://github.com/cloudwatt/php-cli-shell_base
 
 
-# REQUIREMENTS
+REQUIREMENTS
+-------------------
 
 #### PATCHMANAGER
 * Import profiles which are in addons/dcim/ressources
@@ -16,7 +18,8 @@ __*/!\ Do not rename custom profiles*__
 __*/!\ Version 2.0 add new profiles!*__
 
 
-# INSTALLATION
+INSTALLATION
+-------------------
 
 #### APT PHP
 Ubuntu only, you can get last PHP version from this PPA:  
@@ -35,11 +38,33 @@ pcre.jit=0
 ```
 *To locate your php.ini, use this command: php -i | grep "Configuration File"*
 
+
+## USE PHAR
+
+Download last PHAR release and its key from [releases](https://github.com/cloudwatt/php-cli-shell_patchmanager/releases)
+
+![wizard](documentation/readme/wizard.gif)
+
+Wizard help:
+`$ php php-cli-shell.phar --help`
+
+Create firewall configuration with command:
+`$ php php-cli-shell.phar configuration:application:factory dcim`  
+*For more informations about configuration file, see 'CONFIGURATION FILE' section*
+
+Create firewall launcher with command:
+`$ php php-cli-shell.phar launcher:application:factory dcim`
+
+__*The PHAR contains all PHP-CLI SHELL components (Base, DCIM, IPAM and Firewall)*__
+
+
+## USE SOURCE
+
 #### REPOSITORIES
 * git clone https://github.com/cloudwatt/php-cli-shell_base
-* git checkout tags/v2.1.1
+* git checkout tags/v2.1.2
 * git clone https://github.com/cloudwatt/php-cli-shell_patchmanager
-* git checkout tags/v2.1.1
+* git checkout tags/v2.1.2
 * Merge these two repositories
 	
 #### CONFIGURATION FILE
@@ -64,6 +89,10 @@ pcre.jit=0
 * vim patchmanager.php
     * Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file
 
+
+EXECUTION
+-------------------
+
 #### CREDENTIALS FILE
 /!\ For security reason, you can use a read only account!  
 __*Change informations which are between []*__
@@ -71,10 +100,7 @@ __*Change informations which are between []*__
     * read -sr USER_PASSWORD_INPUT
     * export DCIM_[DCIM_SERVER_KEY]_LOGIN=[YourLoginHere]
     * export DCIM_[DCIM_SERVER_KEY]_PASSWORD=$USER_PASSWORD_INPUT  
-	  __Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file__
-
-
-# EXECUTION
+          __Change [DCIM_SERVER_KEY] with the key of your PatchManager server in configuration file__
 
 #### SHELL
 Launch PHP-CLI Shell for PatchManager service

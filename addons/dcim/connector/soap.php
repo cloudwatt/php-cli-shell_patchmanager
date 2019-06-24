@@ -98,6 +98,31 @@
 		protected function _initSoapAPI($key, $server, $urn, $httpProxy, $httpsProxy)
 		{
 			$this->_soapAPI->{$key} = new C\Soap($server.'/'.$urn, 'DCIM_'.$key, $this->_debug);
+
+			switch(substr($server, 0, 6))
+			{
+				case 'http:/':
+					if(C\Tools::is('string&&!empty', $httpProxy)) {
+						$useHttpProxy = $httpProxy;
+					}
+					break;
+				case 'https:':
+					if(C\Tools::is('string&&!empty', $httpsProxy)) {
+						$useHttpProxy = $httpsProxy;
+					}
+					break;
+				default:
+					throw new Exception("L'adresse du serveur DCIM doit commencer par http ou https", E_USER_ERROR);
+			}
+
+			if(isset($useHttpProxy) && preg_match('#^(http(?:s)?:\/\/[^:]*)(?::([0-9]*))?$#i', $useHttpProxy, $matches))
+			{
+				$this->_soapAPI->{$key}->setOpt('proxy_host', $matches[1]);
+
+				if(isset($matches[2])) {
+					$this->_soapAPI->{$key}->setOpt('proxy_port', $matches[2]);
+				}
+			}
 		}
 
 		public function getServerId()
@@ -242,7 +267,7 @@
 			$cabinetIds = array();
 			$cabinetLabels = $this->getCabinetLabelsByLocationId($locationId);
 
-			foreach($cabinetLabels as $index => $cabinetLabel)
+			foreach($cabinetLabels as $cabinetLabel)
 			{
 				if($this->isValidReturn($cabinetLabel))
 				{
@@ -269,6 +294,11 @@
 			return $this->_castToString($cabinetLabels);
 		}
 
+		/**
+		  * @param int $locationId
+		  * @param string $cabinetLabel
+		  * @return int|string Cabinet ID or string if an error occurs
+		  */
 		public function getCabinetIdByLocationIdCabinetLabel($locationId, $cabinetLabel)
 		{
 			$args = $this->getArgs(array($cabinetLabel, $locationId));
@@ -765,23 +795,35 @@
 			$results = $this->_soapAPI->search->reportToClient($args);
 
 			// [ERROR] [ERROR] Incorrect format of the Wild Cards.
-			if($this->isValidReturn($results)) {
+			if($this->isValidReturn($results))
+			{
 				$bytes = explode(';', $results->return);
 				//$csv = implode(array_map("chr", $bytes));
 				$csv = pack('C*', ...$bytes);
 				$csv = str_replace("\n\000", '', $csv);
 				$csv = explode("\n", $csv);
+
 				array_walk($csv, function(&$line, $key) {
 					$line = str_getcsv($line, $this->_reportCsvDelimiter);
 				});
+
 				$keys = array_shift($csv);
+
 				array_walk($keys, function(&$key) {
 					$key = mb_strtolower($key);
 					$key = str_replace(' ', '_', $key);
 				});
-				array_walk($csv, function(&$value, $key, $keys) {
-					$value = array_combine($keys, $value);
+
+				array_walk($csv, function(&$value, $key, $keys)
+				{
+					if(count($keys) === count($value)) {
+						$value = array_combine($keys, $value);
+					}
+					else {
+						throw new Exception("DCIM report result is not valid, head field number (".count($keys).") do not match value field number (".count($value).")", E_USER_ERROR);
+					}
 				}, $keys);
+
 				return $csv;
 				
 			}

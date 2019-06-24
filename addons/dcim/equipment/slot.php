@@ -1,17 +1,17 @@
 <?php
 	namespace Addon\Dcim;
 
-	abstract class Equipment_Slot extends Equipment_Interface_Physical implements \ArrayAccess, \IteratorAggregate, \Countable
-	{
-		/**
-		  * @var Addon\Dcim\Api_Equipment_Slot
-		  */
-		protected $_equipmentSlotApi;
-
+	abstract class Equipment_Slot extends Equipment_Interface_Physical
+	{	
 		/**
 		  * @var int
 		  */
 		protected $_slotId = null;
+
+		/**
+		  * @var Addon\Dcim\Api_Equipment_Slot
+		  */
+		protected $_slotApi = null;
 
 		/**
 		  * @var string
@@ -24,30 +24,17 @@
 		protected $_description = null;
 
 		
-		public function __construct($slotId)
+		public function __construct(Equipment $equipment, $slotId)
 		{
-			$this->_slotId = (int) $slotId;
-			$this->_equipmentSlotApi = new Api_Equipment_Slot($this->_slotId);		// /!\ Ne pas passer null
+			parent::__construct($equipment);
+
+			$this->_slotId = (int) $slotId;		// Test slotId or cast to INT
+			$this->_slotApi = new Api_Equipment_Slot($this->_slotId);
 		}
 
-		public function skipSlot()
-		{
-			return $this->_skipInt();
-		}
-
-		public function isEmpty()
-		{
-			return $this->_equipmentSlotApi->isEmpty();
-		}
-		
 		public function getSlotId()
 		{
 			return $this->_slotId;
-		}
-
-		protected function _getKey()
-		{
-			return $this->getSlotKey();
 		}
 
 		public function getSlotKey()
@@ -59,18 +46,84 @@
 			return $this->_slotKey;
 		}
 
-		protected function _nameToKey($slotName = null)
+		public function getSlotIndex()
 		{
-			if($slotName === null) {
-				$slotName = $this->getSlotName();
-			}
-
-			return mb_strtolower($slotName);
+			$slotKey = $this->getSlotKey();
+			$slotParts = explode(static::INTERFACE_SEPARATOR, $slotKey, 2);
+			return (count($slotParts) === 2) ? ($slotParts[1]) : (false);
 		}
 
-		public function getEquipmentId()
+		public function getSlotApi()
 		{
-			return $this->_equipmentSlotApi->getTopEquipmentId();
+			return $this->_slotApi;
+		}
+
+		public function skipSlot()
+		{
+			return $this->_skipInterface();
+		}
+
+		public function isEmpty()
+		{
+			return $this->_slotApi->isEmpty();
+		}
+
+		public function getSlotName()
+		{
+			if(!array_key_exists('slotName', $this->_datas))
+			{
+				$slotName = $this->_slotApi->getSlotLabel();
+
+				if($slotName === false) {
+					$slotId = $this->_slotApi->getSlotId();
+					$hostName = $this->_portApi->getTopEquipmentLabel();
+					throw new Exception("Impossible de résoudre le label du slot ID '".$slotId."' pour l'équipement '".$hostName."'", E_USER_ERROR);
+				}
+
+				$this->_datas['slotName'] = $slotName;
+			}
+
+			return $this->_datas['slotName'];
+		}
+
+		/**
+		  * @return int
+		  */
+		protected function _getInterfaceId()
+		{
+			return $this->getSlotId();
+		}
+
+		/**
+		  * @return Addon\Dcim\Api_Equipment_Abstract
+		  */
+		protected function _getInterfaceApi()
+		{
+			return $this->getSlotApi();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceKey()
+		{
+			return $this->getSlotKey();
+		}
+
+		/**
+		  * @return int
+		  */
+		protected function _getInterfaceIndex()
+		{
+			return $this->getSlotIndex();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceName()
+		{
+			return $this->getSlotName();
 		}
 
 		public function getStatus()
@@ -82,40 +135,6 @@
 			return $this->_datas['status'];
 		}
 
-		public function getHostName()
-		{
-			if(!array_key_exists('hostName', $this->_datas))
-			{
-				$hostName = $this->_equipmentSlotApi->getTopEquipmentLabel();
-
-				if($hostName === false) {
-					$equipmentId = $this->_Api_Equipment_Port->getTopEquipmentId();
-					throw new Exception("Impossible de résoudre le label pour l'équipement ID \"".$equipmentId."\"", E_USER_ERROR);
-				}
-
-				$this->_datas['hostName'] = current(explode('.', $hostName, 2));
-			}
-
-			return $this->_datas['hostName'];
-		}
-
-		public function getSlotName()
-		{
-			if(!array_key_exists('slotName', $this->_datas))
-			{
-				$slotName = $this->_equipmentSlotApi->getSlotLabel();
-
-				if($slotName === false) {
-					$slotId = $this->_equipmentSlotApi->getSlotId();
-					throw new Exception("Impossible de résoudre le label du slot ID \"".$slotId."\"", E_USER_ERROR);
-				}
-
-				$this->_datas['slotName'] = $slotName;
-			}
-
-			return $this->_datas['slotName'];
-		}
-
 		public function getDescription()
 		{
 			if($this->_description === null) {
@@ -125,7 +144,9 @@
 			return $this->_description;
 		}
 
-		// /!\ Doit retourner un tableau
+		/**
+		  * @return array Return array indexed with slot keys
+		  */
 		public function getDatas()
 		{
 			if(!$this->skipSlot())
@@ -143,57 +164,79 @@
 				return $datas;
 			}
 			else {
-				throw new Exception("Ce slot ne doit pas être traité", E_USER_ERROR);
+				throw new Exception("Ce slot '".$this->slotName."' ne doit pas être traité", E_USER_ERROR);
 			}
 		}
 
-		public function offsetSet($offset, $value)
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getEquipmentId($connectorId = null)
 		{
+			if($connectorId === null || (int) $connectorId === $this->getSlotId()) {
+				return $this->_slotApi->getTopEquipmentId();
+			}
+			else {
+				$Api_Equipment_Slot = new Api_Equipment_Slot($connectorId);
+				return $Api_Equipment_Slot->getTopEquipmentId();
+			}
 		}
 
-		public function offsetExists($offset)
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getTopModuleId($connectorId = null)
 		{
-			return isset($this->{$offset});
+			if($connectorId === null || (int) $connectorId === $this->getSlotId()) {
+				return $this->_slotApi->getModuleEquipmentId();
+			}
+			else {
+				$Api_Equipment_Slot = new Api_Equipment_Slot($connectorId);
+				return $Api_Equipment_Slot->getModuleEquipmentId();
+			}
 		}
 
-		public function offsetUnset($offset)
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getModuleId($connectorId = null)
 		{
-		}
+			if($connectorId === null || (int) $connectorId === $this->getSlotId()) {
+				$moduleId = $this->_slotApi->getParentEquipmentId();
+			}
+			else {
+				$Api_Equipment_Slot = new Api_Equipment_Slot($connectorId);
+				$moduleId = $Api_Equipment_Slot->getParentEquipmentId();
+			}
 
-		public function offsetGet($offset)
-		{
-			$data = $this->{$offset};
-			return ($data !== false) ? ($data) : (null);
-		}
-
-		public function getIterator()
-		{
-			$datas = $this->getDatas();
-			return new ArrayIterator($datas);
-		}
-
-		public function count()
-		{
-			$datas = $this->getDatas();
-			return count($datas);
+			return ($moduleId !== $this->equipment->id) ? ($moduleId) : (false);
 		}
 
 		public function __get($name)
 		{
-			$datas = $this->getDatas();
-			$key = $this->_nameToKey($name);
-
-			if(array_key_exists($key, $datas)) {
-				return $datas[$key];
+			switch($name)
+			{
+				case 'slotId': {
+					return $this->getSlotId();
+				}
+				case 'slotApi': {
+					return $this->getSlotApi();
+				}
+				case 'slotKey': {
+					return $this->getSlotKey();
+				}
+				case 'slotIndex': {
+					return $this->getSlotIndex();
+				}
+				case 'slotName': {
+					return $this->getSlotName();
+				}
+				default: {
+					return parent::__get($name);
+				}
 			}
-
-			return false;
-		}
-
-		public function __isset($name)
-		{
-			$keys = $this->getKeys();
-			$key = $this->_nameToKey($name);
-			return in_array($key, $keys, true);
 		}
 	}

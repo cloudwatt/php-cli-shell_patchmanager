@@ -3,68 +3,60 @@
 
 	use Core as C;
 
-	abstract class Equipment_Port extends Equipment_Interface_Physical implements \ArrayAccess, \IteratorAggregate, \Countable
+	abstract class Equipment_Port extends Equipment_Interface_Physical
 	{
+		/**
+		  * @var int
+		  */
+		protected $_portId = null;
+
 		/**
 		  * @var Addon\Dcim\Api_Equipment_Port
 		  */
-		protected $_equipmentPortApi;
+		protected $_portApi = null;
 
 		/**
 		  * @var Addon\Dcim\Equipment_Interface
 		  */
-		protected $_equipmentInterface;
+		protected $_interface = null;
 
-		protected $_portId = null;
+		/**
+		  * @var string
+		  */
 		protected $_portKey = null;
+
+		/**
+		  * @var string[]
+		  */
+		protected $_description = array();
+
+		/**
+		  * @var Addon\Dcim\Equipment_Port
+		  */
 		protected $_neighborPort = null;
 
-		protected $_description = array();
-		protected $_nbDatas = array();
+		/**
+		  * @var array
+		  */
+		protected $_neighborDatas = array();
 		
 
-		public function __construct($portId)
+		/**
+		  * @param Addon\Dcim\Equipment $equipment
+		  * @param int $portId
+		  * @return $this
+		  */
+		public function __construct(Equipment $equipment, $portId)
 		{
-			$this->_portId = (int) $portId;
-			$this->_equipmentPortApi = new Api_Equipment_Port($this->_portId);		// /!\ Ne pas passer null
+			parent::__construct($equipment);
+
+			$this->_portId = (int) $portId;		// Test portId or cast to INT
+			$this->_portApi = new Api_Equipment_Port($this->_portId);
 		}
 
-		public function skipPort()
-		{
-			return $this->_skipInt();
-		}
-
-		public function isConnected()
-		{
-			return $this->_equipmentPortApi->isConnected();
-		}
-
-		public function setInterface(Equipment_Interface $Equipment_Interface)
-		{
-			if($this->_equipmentInterface === null) {
-				$this->_equipmentInterface = $Equipment_Interface;
-			}
-
-			return $this;
-		}
-
-		public function getInterface()
-		{
-			if($this->_equipmentInterface === null) {
-				throw new Exception("L'interface de ce port n'est pas déclarée", E_USER_ERROR);
-			}
-
-			return $this->_equipmentInterface;
-		}
-		
 		public function getPortId()
 		{
 			return $this->_portId;
-		}
-
-		protected function _getKey()
-		{
-			return $this->getPortKey();
 		}
 
 		public function getPortKey()
@@ -76,13 +68,122 @@
 			return $this->_portKey;
 		}
 
-		protected function _nameToKey($portName = null)
+		public function getPortIndex()
 		{
-			if($portName === null) {
-				$portName = $this->getPortName();
+			$portKey = $this->getPortKey();
+			$portParts = explode(static::INTERFACE_SEPARATOR, $portKey, 2);
+			return (count($portParts) === 2) ? ($portParts[1]) : (false);
+		}
+
+		public function getPortApi()
+		{
+			return $this->_portApi;
+		}
+
+		public function skipPort()
+		{
+			return $this->_skipInterface();
+		}
+
+		public function isConnected()
+		{
+			return $this->_portApi->isConnected();
+		}
+
+		public function hasInterface()
+		{
+			return ($this->_interface !== null);
+		}
+
+		public function setInterface(Equipment_Interface $interface)
+		{
+			if(($port = $interface->retrievePort()) !== false && $port === $this)
+			{
+				if(!$this->hasInterface()) {
+					$this->_interface = $interface;
+				}
+				else {
+					throw new Exception("L'interface '".$interface->interfaceName."' ne peut être déclarée pour le port '".$this->portApi->label."', une interface est déjà présente", E_USER_ERROR);
+				}
+			}
+			else {
+				throw new Exception("L'interface '".$interface->interfaceName."' ne peut être déclarée car son port '".$port->portApi->label."' ne correspond pas au port '".$this->portApi->label."'", E_USER_ERROR);
 			}
 
-			return mb_strtolower($portName);
+			return $this;
+		}
+
+		public function getInterface()
+		{
+			if(!$this->hasInterface()) {
+				throw new Exception("L'interface du port '".$this->portApi->label."' n'est pas déclarée", E_USER_ERROR);
+			}
+
+			return $this->_interface;
+		}
+
+		public function getPortName($portKey = null)
+		{
+			if(!array_key_exists('portName', $this->_datas))
+			{
+				$portName = $this->_portApi->getPortLabel();
+
+				if($portName === false) {
+					$portId = $this->_portApi->getPortId();
+					$hostName = $this->_portApi->getTopEquipmentLabel();
+					throw new Exception("Impossible de résoudre le label du port ID '".$portId."' pour l'équipement '".$hostName."'", E_USER_ERROR);
+				}
+
+				$this->_datas['portName'] = $portName;
+			}
+
+			$datas = $this->_getPortDatasByKey($portKey);
+
+			if(!array_key_exists('portName', $datas)) {
+				$datas['portName'] = $this->_datas['portName'];
+			}
+
+			return $datas['portName'];
+		}
+
+		/**
+		  * @return int
+		  */
+		protected function _getInterfaceId()
+		{
+			return $this->getPortId();
+		}
+
+		/**
+		  * @return Addon\Dcim\Api_Equipment_Abstract
+		  */
+		protected function _getInterfaceApi()
+		{
+			return $this->getPortApi();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceKey()
+		{
+			return $this->getPortKey();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceIndex()
+		{
+			return $this->getPortIndex();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceName()
+		{
+			return $this->getPortName();
 		}
 
 		public function getStatus()
@@ -96,17 +197,7 @@
 
 		public function getHostName($portKey = null)
 		{
-			if(!array_key_exists('hostName', $this->_datas))
-			{
-				$hostName = $this->_equipmentPortApi->getTopEquipmentLabel();
-
-				if($hostName === false) {
-					$equipmentId = $this->_equipmentPortApi->getTopEquipmentId();
-					throw new Exception("Impossible de résoudre le label pour l'équipement ID \"".$equipmentId."\"", E_USER_ERROR);
-				}
-
-				$this->_datas['hostName'] = current(explode('.', $hostName, 2));
-			}
+			parent::getHostName();
 
 			$datas = $this->_getPortDatasByKey($portKey);
 
@@ -115,29 +206,6 @@
 			}
 
 			return $datas['hostName'];
-		}
-
-		public function getPortName($portKey = null)
-		{
-			if(!array_key_exists('portName', $this->_datas))
-			{
-				$portName = $this->_equipmentPortApi->getPortLabel();
-
-				if($portName === false) {
-					$portId = $this->_equipmentPortApi->getPortId();
-					throw new Exception("Impossible de résoudre le label du port ID \"".$portId."\"", E_USER_ERROR);
-				}
-
-				$this->_datas['portName'] = $portName;
-			}
-
-			$datas = $this->_getPortDatasByKey($portKey);
-
-			if(!array_key_exists('portName', $datas)) {
-				$datas['portName'] = $this->_datas['portName'];
-			}
-
-			return $datas['portName'];
 		}
 
 		public function getDescription($portKey = null)
@@ -153,7 +221,9 @@
 			return $this->_description[$portKey];
 		}
 
-		// /!\ Doit retourner un tableau
+		/**
+		  * @return array Return array indexed with port keys
+		  */
 		public function getDatas()
 		{
 			if(!$this->skipPort())
@@ -171,50 +241,83 @@
 				return $datas;
 			}
 			else {
-				throw new Exception("Ce port ne doit pas être traité", E_USER_ERROR);
+				throw new Exception("Ce port '".$this->portName."' ne doit pas être traité", E_USER_ERROR);
 			}
 		}
 
-		public function getKeys()
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getEquipmentId($connectorId = null)
 		{
-			return array_keys($this->getDatas());
-		}
-
-		public function getEquipmentId($portId = null)
-		{
-			if($portId === null || (int) $portId === $this->getPortId()) {
-				return $this->_equipmentPortApi->getTopEquipmentId();
+			if($connectorId === null || (int) $connectorId === $this->getPortId()) {
+				//return $this->_equipment->equipmentId;
+				return $this->_portApi->getTopEquipmentId();
 			}
 			else {
-				$Api_Equipment_Port = new Api_Equipment_Port($portId);
+				$Api_Equipment_Port = new Api_Equipment_Port($connectorId);
 				return $Api_Equipment_Port->getTopEquipmentId();
 			}
 		}
 
-		public function getModuleId($portId = null)
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getTopModuleId($connectorId = null)
 		{
-			if($portId === null || (int) $portId === $this->getPortId()) {
-				return $this->_equipmentPortApi->getModuleEquipmentId();
+			if($connectorId === null || (int) $connectorId === $this->getPortId()) {
+				return $this->_portApi->getModuleEquipmentId();
 			}
 			else {
-				$Api_Equipment_Port = new Api_Equipment_Port($portId);
+				$Api_Equipment_Port = new Api_Equipment_Port($connectorId);
 				return $Api_Equipment_Port->getModuleEquipmentId();
 			}
 		}
 
-		public function getNeighborEquipId($portId = null)
+		/**
+		  * @param null|int $connectorId
+		  * @return false|int
+		  */
+		public function getModuleId($connectorId = null)
 		{
-			if($portId === null) {
-				$portId = $this->getNeighborPortId();
+			if($connectorId === null || (int) $connectorId === $this->getPortId()) {
+				$moduleId = $this->_portApi->getParentEquipmentId();
+			}
+			else {
+				$Api_Equipment_Port = new Api_Equipment_Port($connectorId);
+				$moduleId = $Api_Equipment_Port->getParentEquipmentId();
 			}
 
+			return ($moduleId !== $this->equipment->id) ? ($moduleId) : (false);
+		}
+
+		public function getNeighborEquipmentId($portId = null)
+		{
+			if($portId === null  || (int) $portId === $this->getPortId())
+			{
+				$portId = $this->getPortId();
+
+				if($this->hasNeighborPort()) {
+					return $this->_neighborPort->getEquipmentId();
+				}
+			}
+
+			$portId = $this->getNeighborPortId($portId);
 			return $this->getEquipmentId($portId);
 		}
 
 		public function getNeighborPortId($portId = null)
 		{
-			if($portId === null || (int) $portId === $this->getPortId()) {
-				$Api_Equipment_Port = $this->_equipmentPortApi;
+			if($portId === null || (int) $portId === $this->getPortId())
+			{
+				if($this->hasNeighborPort()) {
+					return $this->_neighborPort->getPortId();
+				}
+				else {
+					$Api_Equipment_Port = $this->_portApi;
+				}
 			}
 			else {
 				$Api_Equipment_Port = new Api_Equipment_Port($portId);
@@ -237,48 +340,43 @@
 		{
 			if(!$this->hasNeighborPort()) {
 				$this->_neighborPort = $portEquipment;
-				$this->_nbDatas = $this->_getNeighborInfos();
+				$this->_neighborDatas = $this->_getNeighborDatas();
 			}
 
 			return $this;
 		}
 
-		protected function _getNeighborInfos()
+		protected function _getNeighborDatas()
 		{
-			$port = $this->getNeighborPort();
+			$neighborPort = $this->getNeighborPort();
 
-			if($port !== false)
+			if($neighborPort !== false)
 			{
-				if($this->getPortId() === $port->getNeighborPortId())
+				if($this->getPortId() === $neighborPort->getNeighborPortId())
 				{
 					$datas = array();
 
-					$leftKeys = $this->getKeys();
-					$rightKeys = $port->getKeys();
-					$rightDatas = $port->getDatas();
+					$leftKey = $this->getPortKey();
+					$rightKey = $neighborPort->getPortKey();
+					$rightDatas = $neighborPort->getDatas();
+					$rightDatas = $rightDatas[$rightKey];
 
-					foreach($rightKeys as $index => $rightKey)
+					$rightDescription = $neighborPort->getDescription($rightKey);
+					$datas[$leftKey]['description'] = $rightDescription;
+
+					foreach($rightDatas as $index => $value)
 					{
-						$leftKey = $leftKeys[$index];
-
-						$rightDesc = $port->getDescription($rightKey);
-						$datas[$leftKey]['description'] = $rightDesc;
-
-						foreach(array_keys($rightDatas[$rightKey]) as $key)
+						switch($index)
 						{
-							switch($key)
-							{
-								case 'hostName':
-								case 'portName': 
-								case 'intId':
-								case 'intIndex':
-								case 'intIndex2':
-								case 'intType': {
-									$value = $rightDatas[$rightKey][$key];
-									// /!\ Important la clé doit être la clé actuelle côté gauche
-									$datas[$leftKey]['conTo'.ucfirst($key)] = $value;
-									break;
-								}
+							case 'hostName':
+							case 'portName': 
+							case 'intId':
+							case 'intIndex':
+							case 'intIndex2':
+							case 'intType': {
+								// /!\ Important la clé doit être la clé actuelle côté gauche
+								$datas[$leftKey]['conTo'.ucfirst($index)] = $value;
+								break;
 							}
 						}
 					}
@@ -286,21 +384,27 @@
 					return $datas;
 				}
 				else {
-					throw new Exception("L'ID du port voisin ne correspond pas à l'ID du port déclaré", E_USER_ERROR);
+					$eMessage = "('".$this->portName."', '".$neighborPort->portName."')";
+					throw new Exception("L'ID du port voisin ne correspond pas à l'ID du port voisin déclaré ".$eMessage, E_USER_ERROR);
 				}
 			}
 			else {
-				$portName = $this->getPortName();
-				throw new Exception("Le port voisin du port '".$portName."' n'est pas déclaré", E_USER_ERROR);
+				throw new Exception("Le port voisin pour le port '".$this->portName."' n'est pas déclaré", E_USER_ERROR);
 			}
 		}
 
-		// /!\ Doit retourner un tableau
+		/**
+		  * @return array
+		  */
 		public function getNeighborDatas()
 		{
-			return ($this->hasNeighborPort()) ? ($this->_nbDatas) : (array());
+			return ($this->hasNeighborPort()) ? ($this->_neighborDatas) : (array());
 		}
 
+		/**
+		  * @param array $datas
+		  * @return $this
+		  */
 		public function setNeighborDatas(array $datas)
 		{
 			throw new Exception("Il est interdit de changer les données du port voisin", E_USER_ERROR);
@@ -313,7 +417,7 @@
 				return $this->_datas;
 			}
 			else {
-				throw new Exception("L'index du port est invalide", E_USER_ERROR);
+				throw new Exception("L'index '".$index."' du port '".$this->portApi->label."' est invalide", E_USER_ERROR);
 			}
 		}
 
@@ -323,62 +427,32 @@
 				return $this->_datas;
 			}
 			else {
-				throw new Exception("La clé du port est invalide", E_USER_ERROR);
+				throw new Exception("La clé '".$key."' du port '".$this->portApi->label."' est invalide", E_USER_ERROR);
 			}
-		}
-
-		protected function _indexIsValid($index)
-		{
-			return C\Tools::is('int&&>=0', $index);
-		}
-
-		public function offsetSet($offset, $value)
-		{
-		}
-
-		public function offsetExists($offset)
-		{
-			return isset($this->{$offset});
-		}
-
-		public function offsetUnset($offset)
-		{
-		}
-
-		public function offsetGet($offset)
-		{
-			$data = $this->{$offset};
-			return ($data !== false) ? ($data) : (null);
-		}
-
-		public function getIterator()
-		{
-			$datas = $this->getDatas();
-			return new \ArrayIterator($datas);
-		}
-
-		public function count()
-		{
-			$datas = $this->getDatas();
-			return count($datas);
 		}
 
 		public function __get($name)
 		{
-			$datas = $this->getDatas();
-			$key = $this->_nameToKey($name);
-
-			if(array_key_exists($key, $datas)) {
-				return $datas[$key];
+			switch($name)
+			{
+				case 'portId': {
+					return $this->getPortId();
+				}
+				case 'portApi': {
+					return $this->getPortApi();
+				}
+				case 'portKey': {
+					return $this->getPortKey();
+				}
+				case 'portIndex': {
+					return $this->getPortIndex();
+				}
+				case 'portName': {
+					return $this->getPortName();
+				}
+				default: {
+					return parent::__get($name);
+				}
 			}
-
-			return false;
-		}
-
-		public function __isset($name)
-		{
-			$keys = $this->getKeys();
-			$key = $this->_nameToKey($name);
-			return in_array($key, $keys, true);
 		}
 	}

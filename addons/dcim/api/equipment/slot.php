@@ -48,21 +48,27 @@
 			return ($this->getChildEquipmentId() === false);
 		}
 
-		public function getChildEquipmentId()
+		/**
+		  * Return the parent equipment ID this slot is on
+		  *
+		  * @return false|int
+		  */
+		public function getParentEquipmentId()
 		{
-			if(!$this->hasSlotId() || !$this->slotExists()) {
-				return false;
-			}
-			elseif($this->_childEquipmentId === null) {
-				$result = $this->_adapter->getEquipmentIdBySlotId($this->getSlotId());
-				$this->_childEquipmentId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
+			if($this->slotExists())
+			{
+				$result = $this->_adapter->getParentEquipmentIdBySlotId($this->getSlotId());
+	
+				if($this->_adapter->isValidReturn($result)) {
+					return (int) $result;
+				}
 			}
 
-			return $this->_childEquipmentId;
+			return false;
 		}
 
 		/**
-		  * Return the top equipment ID this port is on
+		  * Return the top equipment ID this slot is on
 		  *
 		  * @return false|int
 		  */
@@ -123,6 +129,24 @@
 			}
 
 			return $this->_equipmentApi;
+		}
+
+		/**
+		  * Return the child equipment ID this slot is on
+		  *
+		  * @return false|int
+		  */
+		public function getChildEquipmentId()
+		{
+			if(!$this->hasSlotId() || !$this->slotExists()) {
+				return false;
+			}
+			elseif($this->_childEquipmentId === null) {
+				$result = $this->_adapter->getEquipmentIdBySlotId($this->getSlotId());
+				$this->_childEquipmentId = ($this->_adapter->isValidReturn($result)) ? ((int) $result) : (false);
+			}
+
+			return $this->_childEquipmentId;
 		}
 
 		/**

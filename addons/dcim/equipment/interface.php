@@ -3,61 +3,85 @@
 
 	use Core as C;
 
-	abstract class Equipment_Interface extends Equipment_Interface_Virtual implements \ArrayAccess, \IteratorAggregate, \Countable
+	abstract class Equipment_Interface extends Equipment_Interface_Virtual
 	{
 		const INT_PHYSICAL = 0;
 		const INT_VIRTUAL = 1;
 
 		/**
-		  * @var Addon\Dcim\Equipment_Port
-		  */
-		protected $_equipmentPort;
-
-		/**
 		  * Physical or virtual interface
 		  * @var int
 		  */
-		protected $_mode;
+		protected $_mode = null;
 
 		/**
 		  * @var string
 		  */
-		protected $_intKey;
+		protected $_interfaceKey = null;
 
 		/**
 		  * @var int
 		  */
-		protected $_intIndex;
+		protected $_interfaceIndex = null;
+
+		/**
+		  * @var array
+		  */
+		protected $_interfaceLabels = array();
 
 		/**
 		  * @var string
 		  */
 		protected $_description = null;
 
+		/**
+		  * @var array
+		  */
+		protected $_neighborDatas = null;
 
-		// index passé lors de l'instanciation permet de garantir que celui-ci ne peut être changé plus tard
-		public function __construct($port, $index = null)
+
+		/**
+		  * $index passé lors de l'instanciation permet de garantir que celui-ci ne peut être changé plus tard
+		  *
+		  * @param Addon\Dcim\Equipment $equipment
+		  * @param string|Addon\Dcim\Equipment_Port $port
+		  * @param null|int $index
+		  * @param null|array $labels
+		  * @return $this
+		  */
+		public function __construct(Equipment $equipment, $port, $index = null, array $labels = null)
 		{
+			parent::__construct($equipment);
+
 			if($port instanceof Equipment_Port)
 			{
-				$this->_mode = self::INT_PHYSICAL;
-				$this->_equipmentPort = $port;
+				$this->_port = $port;
+				$this->_mode = static::INT_PHYSICAL;
 
 				$portKey = $port->getPortKey();
-				$this->_setIntKey($portKey);		// /!\ Si un index existe, il sera traité par _setIntKey
+				$this->_setInterfaceKey($portKey);		// /!\ Si un index ou part existent, ils seront traités par _setInterfaceKey
 
 				$this->setHostName($port->getHostName());
-				$this->setIntName($port->getPortName());
+				$this->setInterfaceName($port->getPortName());
 			}
 			elseif(C\Tools::is('string&&!empty', $port))
 			{
-				$this->_mode = self::INT_VIRTUAL;
+				$this->_mode = static::INT_VIRTUAL;
 
-				$this->_setIntKey($port);			// /!\ Si un index existe, il sera traité par _setIntKey
-				$this->setIntName($port);
+				$this->_setInterfaceKey($port);			// /!\ Si un index ou part existent, ils seront traités par _setInterfaceKey
+
+				if($index !== null && $this->getInterfaceIndex() === false) {
+					$this->_setInterfaceIndex($index);
+				}
+
+				if($labels !== null && count($this->getInterfaceLabels()) === 0) {
+					$this->_setInterfaceLabels($labels);
+				}
+
+				$this->setInterfaceName($port);
 			}
 			else {
-				throw new Exception("Impossible d'instancier une interface", E_USER_ERROR);
+				throw new Exception("Impossible d'instancier une interface, le port n'est pas du bon type '".gettype($port)."'", E_USER_ERROR);
 			}
 
 			$this->_setup();
@@ -67,90 +91,260 @@
 		{
 		}
 
-		protected function _isPhysical()
+		/**
+		  * @return string
+		  */
+		public function getInterfaceId()
 		{
-			return ($this->_mode === self::INT_PHYSICAL);
+			return $this->_formatInterfaceId(true, true, true);
 		}
 
-		protected function _setIntKey($intKey)
+		/**
+		  * @param bool $key
+		  * @param bool $index
+		  * @param bool $labels
+		  * @return string
+		  */
+		protected function _formatInterfaceId($key = true, $index = true, $labels = true)
 		{
-			if($this->hasPort()) {
-				$Equipment_Port = get_class($this->getPort());
-				$separator = $Equipment_Port::INT_SEPARATOR;
+			$intId = '';
+
+			if($key)
+			{
+				$intId .= $this->getInterfaceKey();
+
+				if($index)
+				{
+					$intIndex = $this->getInterfaceIndex();
+
+					if($intIndex !== false)
+					{
+						if($this->hasPort()) {
+							$pSeparator = $this->_port::INTERFACE_SEPARATOR;
+						}
+						else {
+							$pSeparator = $this->_equipment::PORT_INTERFACE_SEPARATOR;
+						}
+
+						$intId .= $pSeparator.$intIndex;
+					}
+
+					if($labels)
+					{
+						$intLabels = $this->getInterfaceLabels();
+
+						if(count($intLabels) > 0) {
+							$vSeparator = static::INTERFACE_SEPARATOR;
+							$intLabel = implode($vSeparator, $intLabels);
+							$intId .= $vSeparator.$intLabel;
+						}
+					}
+				}
+			}
+
+			return $intId;
+		}
+
+		/**
+		  * @param string $intKey
+		  * @return $this
+		  */
+		protected function _setInterfaceKey($intKey)
+		{
+			$hasPort = $this->hasPort();
+
+			if($hasPort) {
+				$pSeparator = $this->_port::INTERFACE_SEPARATOR;
 			}
 			else {
-				$separator = Equipment_Interface_Physical::INT_SEPARATOR;
+				$pSeparator = $this->_equipment::PORT_INTERFACE_SEPARATOR;
 			}
 
-			// /!\ Si la clé possède un index; Séparateur physique si elle vient du port
-			$intKey = str_replace($separator, self::INT_SEPARATOR, $intKey);
-			$intKeyParts = explode(self::INT_SEPARATOR, $intKey, 2);
+			/**
+			  * /!\ Si la clé possède un index alors il est indispensable que le séparateur utilisé soit de type physique
+			  * En général, la clé de l'interface provient du port donc séparateur physique, et les labels sont virtuelles
+			  *
+			  * xe-0/0/69:1.508.123 : key:index.part.part ...
+			  * Un index seul peut exister
+			  * Un label seul peut exister
+			  * Compatible multi-labels
+			  */
+			$pSeparator = preg_quote($pSeparator, '#');
+			$vSeparator = preg_quote(static::INTERFACE_SEPARATOR, '#');
 
-			$this->_intKey = mb_strtolower($intKeyParts[0]);
+			/**
+			  * La 3ème parenthèse capturante doit capturer l'ensemble des labels c'est à dire les chiffres et le séparateur (508.123...)
+			  */
+			$keyRegex = '([^'.$pSeparator.$vSeparator.']+)';
+			$indexRegex = '(?:'.$pSeparator.'([0-9]+))?';
+			$labelRegex = '(?:'.$vSeparator.'([0-9'.$vSeparator.']+))?';
 
-			if(count($intKeyParts) > 1) {
-				$this->_setIntIndex($intKeyParts[1]);
+			if(preg_match('#'.$keyRegex.$indexRegex.$labelRegex.'#i', $intKey, $intParts))
+			{
+				// interface key
+				$this->_interfaceKey = mb_strtolower($intParts[1]);
+
+				// interface index
+				if(isset($intParts[2])) {
+					$this->_setInterfaceIndex($intParts[2]);
+				}
+
+				// interface labels
+				if(isset($intParts[3]))
+				{
+					if(!$hasPort) {
+						$labels = explode(static::INTERFACE_SEPARATOR, $intParts[3]);
+						$this->_setInterfaceLabels($labels);
+					}
+					else
+					{
+						/**
+						  * Une interface physique donc lié à un port ne peut pas contenir de labels
+						  * Les labels sont des tags réservés aux interfaces virtuelles
+						  *
+						  * Example les vlans pour les interface réseau
+						  */
+						throw new Exception("Impossible d'instancier l'interface physique '".$intKey."', le nom possède des labels '".$intParts[3]."'", E_USER_ERROR);
+					}
+				}
+			}
+			else {
+				throw new Exception("Impossible d'instancier l'interface '".$intKey."', le nom n'est pas valide", E_USER_ERROR);
 			}
 
 			return $this;
 		}
 
-		public function getIntKey()
+		/**
+		  * @return string
+		  */
+		public function getInterfaceKey()
 		{
-			return $this->_intKey;
+			return $this->_interfaceKey;
 		}
 
-		protected function _setIntIndex($intIndex)
+		protected function _setInterfaceIndex($intIndex)
 		{
 			if($this->_indexIsValid($intIndex)) {
-				$this->_intIndex = $intIndex;
+				$this->_interfaceIndex = $intIndex;
+			}
+
+			return $this;
+		}
+
+		/**
+		  * @return false|int
+		  */
+		public function getInterfaceIndex()
+		{
+			return ($this->_interfaceIndex !== null) ? ($this->_interfaceIndex) : (false);
+		}
+
+		/**
+		  * @param array $intLabels
+		  * @return $this
+		  */
+		protected function _setInterfaceLabels(array $intLabels)
+		{
+			$this->_interfaceLabels = $intLabels;
+			return $this;
+		}
+
+		/**
+		  * @return array
+		  */
+		public function getInterfaceLabels()
+		{
+			return $this->_interfaceLabels;
+		}
+
+		/**
+		  * @return bool
+		  */
+		public function isPhysical()
+		{
+			return ($this->_mode === static::INT_PHYSICAL);
+		}
+
+		/**
+		  * @return bool
+		  */
+		public function isVirtual()
+		{
+			return ($this->_mode === static::INT_VIRTUAL);
+		}
+
+		public function setInterfaceName($intName)
+		{
+			if(C\Tools::is('string&&!empty', $intName)) {
+				$this->_datas['intName'] = $intName;
 			}
 			return $this;
 		}
 
-		public function getIntIndex()
+		public function getInterfaceName()
 		{
-			return ($this->_intIndex !== null) ? ($this->_intIndex) : (false);
+			/**
+			  * /!\ Depuis le constructor on renseigne le nom de l'interface
+			  * /!\ Le nom du port ne doit pas pouvoir être changé depuis le port
+			  */
+			return $this->_datas['intName'];
 		}
 
-		public function getIntId()
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceId()
 		{
-			$intKey = $this->getIntKey();
-			$intIndex = $this->getIntIndex();
-
-			return ($intIndex !== false) ? ($intKey.self::INT_SEPARATOR.$intIndex) : ($intKey);
+			return $this->getInterfaceId();
 		}
 
-		protected function _getKey()
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceKey()
 		{
-			return $this->getIntId();
+			return $this->getInterfaceKey();
 		}
 
-		public function hasPort()
+		/**
+		  * @return false|int
+		  */
+		protected function _getInterfaceIndex()
 		{
-			return isset($this->_equipmentPort);
+			return $this->getInterfaceIndex();
 		}
 
-		public function getPort()
+		/**
+		  * @return array
+		  */
+		protected function _getInterfaceLabels()
 		{
-			// @todo a corriger
-			if($this->hasPort() !== $this->_isPhysical()) {
-				throw new Exception("", E_USER_ERROR);
+			return $this->getInterfaceLabels();
+		}
+
+		/**
+		  * @return string
+		  */
+		protected function _getInterfaceName()
+		{
+			return $this->getInterfaceName();
+		}
+
+		/**
+		  * @return false|Addon\Dcim\Equipment_Port
+		  */
+		public function retrievePort()
+		{
+			if($this->hasPort() && $this->isPhysical()) {
+				return $this->_port;
 			}
-			elseif($this->hasPort() && $this->_isPhysical()) {
-				return $this->_equipmentPort;
+			elseif($this->hasPort() !== $this->isPhysical()) {
+				throw new Exception("L'interface '".$this->getInterfaceName()."' n'est pas valide", E_USER_ERROR);
 			}
 			else {
 				return false;
 			}
-		}
-
-		public function getPortId()
-		{
-			$intKey = $this->getIntKey();
-			$intIndex = $this->getIntIndex();
-
-			return ($intIndex !== false) ? ($intKey.Equipment_Port::INT_SEPARATOR.$intIndex) : ($intKey);
 		}
 
 		public function setHostName($hostName)
@@ -166,32 +360,18 @@
 			return (array_key_exists('hostName', $this->_datas)) ? ($this->_datas['hostName']) : (false);
 		}
 
-		public function setIntName($intName)
-		{
-			if(C\Tools::is('string&&!empty', $intName)) {
-				$this->_datas['intName'] = $intName;
-				$this->_datas['portName'] = $intName;	// /!\ compatibilité
-			}
-			return $this;
-		}
-
-		public function getIntName()
-		{
-			/**
-			  * /!\ Depuis le constructor on renseigne le nom de l'interface
-			  * /!\ Le nom du port ne doit pas pouvoir être changé depuis le port
-			  */
-			return $this->_datas['intName'];
-		}
-
 		/**
 		  * Permet d'indiquer la description de l'interface voisine
+		  *
+		  * @param string $description
+		  * @return $this
 		  */
-		public function setDescription($desc)
+		public function setDescription($description)
 		{
-			if(C\Tools::is('string&&!empty', $desc)) {
-				$this->_datas['description'] = $desc;
+			if(C\Tools::is('string&&!empty', $description)) {
+				$this->_datas['description'] = $description;
 			}
+
 			return $this;
 		}
 
@@ -199,134 +379,143 @@
 		  * /!\ Ne surtout pas retourner la description de datas
 		  * La description retournée doit être celle de cette interface
 		  * Dans datas, la description est potentiellement celle du voisin
+		  *
+		  * @return string Description
 		  */
 		public function getDescription()
 		{
 			if($this->_description === null) {
-				$this->_description = $this->getHostName()." ".$this->getIntName();
+				$this->_description = $this->getHostName()." ".$this->getInterfaceName();
 			}
 
 			return $this->_description;
 		}
 
-		// /!\ Doit retourner un tableau
+		/**
+		  * @return array Return array indexed with interface IDs
+		  */
 		public function getDatas()
 		{
 			$datas = array();
 
 			$this->getHostName();
-			$this->getIntName();
+			$this->getInterfaceName();
 			$this->getAttributes();
 			$this->getDescription();
 
-			$datas[$this->getIntId()] = $this->_datas;
+			$datas[$this->getInterfaceId()] = $this->_datas;
 
 			return $datas;
 		}
 
-		// /!\ Doit retourner un tableau
-		// @todo faire comme port sauvegarder dans array
-		public function getNeighborDatas()
+		/**
+		  * @return bool
+		  */
+		public function hasNeighborInterface()
 		{
-			if(($port = $this->getPort()) !== false)
+			return ($this->getNeighborInterface() !== false);
+		}
+
+		/**
+		  * @return false|Addon\Dcim\Equipment_Interface
+		  */
+		public function getNeighborInterface()
+		{
+			$port = $this->retrievePort();
+
+			if($port !== false)
 			{
-				$nbPort = $port->getNeighborPort();
+				$neighborPort = $port->getNeighborPort();
 
-				if($nbPort !== false)
+				if($neighborPort !== false)
 				{
-					$nbInt = $nbPort->getInterface();
+					$neighborInterface = $neighborPort->getInterface();
 
-					if($nbInt !== false)
-					{
-						$datas = array();
-
-						$leftIntKey = $this->getIntId();
-						$rightIntKey = $nbInt->getIntId();
-						$nbDatas = $nbInt->getDatas();
-
-//echo "\r\nDEBUG 0\r\n\t";var_dump($nbDatas);echo "\r\nEND 0\r\n";
-
-						$nbDesc = $nbInt->getDescription();
-						$datas[$leftIntKey]['description'] = $nbDesc;
-
-						foreach(array_keys(current($nbDatas)) as $key)
-						{
-							switch($key)
-							{
-								case 'hostName':
-								case 'intName':
-								case 'intId':
-								case 'intIndex':
-								case 'intIndex2':
-								case 'intType': {
-									$value = $nbDatas[$rightIntKey][$key];
-									// /!\ Important la clé doit être la clé actuelle côté gauche
-									$datas[$leftIntKey]['conTo'.ucfirst($key)] = $value;
-									break;
-								}
-							}
-						}
-
-//echo "\r\nDEBUG 1\r\n\t";var_dump($datas);echo "\r\nEND 1\r\n";
-						
-						return $datas;
+					if($neighborInterface !== false) {
+						return $neighborInterface;
 					}
 				}
-			}
-
-			return array();
-		}
-
-		protected function _indexIsValid($index)
-		{
-			return C\Tools::is('int&&>=0', $index);
-		}
-
-		public function offsetSet($offset, $value)
-		{
-		}
-
-		public function offsetExists($offset)
-		{
-			return isset($this->{$offset});
-		}
-
-		public function offsetUnset($offset)
-		{
-		}
-
-		public function offsetGet($offset)
-		{
-			$data = $this->{$offset};
-			return ($data !== false) ? ($data) : (null);
-		}
-
-		public function getIterator()
-		{
-			$datas = $this->getDatas();
-			return new \ArrayIterator($datas);
-		}
-
-		public function count()
-		{
-			$datas = $this->getDatas();
-			return count($datas);
-		}
-
-		public function __get($name)
-		{
-			$datas = $this->getDatas();
-
-			if(array_key_exists($name, $datas)) {
-				return $datas[$key];
 			}
 
 			return false;
 		}
 
-		public function __isset($name)
+		/**
+		  * @param bool $forceToRefresh
+		  * @return array
+		  */
+		public function getNeighborDatas($forceToRefresh = false)
 		{
-			$datas = $this->getDatas();
-			return array_key_exists($name, $datas);
+			if(($neighborInterface = $this->getNeighborInterface()) !== false)
+			{
+				if($this->_neighborDatas === null || $forceToRefresh) {
+					$this->_neighborDatas = $this->_getNeighborDatas($neighborInterface);
+				}
+
+				return $this->_neighborDatas;
+			}
+			else {
+				return array();
+			}
+		}
+
+		/**
+		  * @param Addon\Dcim\Equipment_Interface $neighborInterface
+		  * @return array
+		  */
+		protected function _getNeighborDatas(Equipment_Interface $neighborInterface)
+		{
+			$datas = array();
+
+			$leftId = $this->getInterfaceId();
+			$rightId = $neighborInterface->getInterfaceId();
+			$rightDatas = $neighborInterface->getDatas();
+
+			$neighborDescription = $neighborInterface->getDescription();
+			$datas[$leftId]['description'] = $neighborDescription;
+
+			foreach($rightDatas[$rightId] as $key => $value)
+			{
+				switch($key)
+				{
+					case 'hostName':
+					case 'intName':
+					case 'intId':
+					case 'intIndex':
+					case 'intIndex2':
+					case 'intType': {
+						// /!\ Important la clé doit être la clé actuelle côté gauche
+						$datas[$leftId]['conTo'.ucfirst($key)] = $value;
+						break;
+					}
+				}
+			}
+			
+			return $datas;
+		}
+
+		public function __get($name)
+		{
+			switch($name)
+			{
+				case 'interfaceId': {
+					return $this->getInterfaceId();
+				}
+				case 'interfaceKey': {
+					return $this->getInterfaceKey();
+				}
+				case 'interfaceIndex': {
+					return $this->getInterfaceIndex();
+				}
+				case 'interfaceLabels': {
+					return $this->getInterfaceLabels();
+				}
+				case 'interfaceName': {
+					return $this->getInterfaceName();
+				}
+				default: {
+					return parent::__get($name);
+				}
+			}
 		}
 	}

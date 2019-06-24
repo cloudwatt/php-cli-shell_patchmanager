@@ -109,9 +109,15 @@
 		protected $_addonService;
 
 
-		public function __construct($configFilename, $server, $autoInitialisation = true)
+		/**
+		  * @param string|array|Core\Config $configuration
+		  * @param string $server DCIM server key
+		  * @param bool $autoInitialisation
+		  * @return $this
+		  */
+		public function __construct($configuration, $server, $autoInitialisation = true)
 		{
-			parent::__construct($configFilename);
+			parent::__construct($configuration);
 
 			if(!$this->isOneShotCall()) {
 				$printInfoMessages = true;

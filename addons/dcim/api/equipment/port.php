@@ -139,10 +139,7 @@
 		  */
 		public function getParentEquipmentId()
 		{
-			if(!$this->hasPortId() || !$this->portExists()) {
-				return false;
-			}
-			else
+			if($this->portExists())
 			{
 				$result = $this->_adapter->getParentEquipmentIdByPortId($this->getPortId());
 	
@@ -152,23 +149,6 @@
 			}
 
 			return false;
-		}
-
-		/**
-		  * Return the first top module equipment ID this port is on
-		  *
-		  * @return false|int
-		  */
-		public function getModuleEquipmentId()
-		{
-			$parentEquipmentId = $this->getParentEquipmentId();
-			return ($parentEquipmentId !== false) ? ($this->_getModuleEquipmentId($parentEquipmentId)) : (false);
-		}
-
-		protected function _getModuleEquipmentId($equipmentId, $moduleId = false)
-		{
-			$parentEquipId = $this->_adapter->getParentEquipmentIdByEquipmentId($equipmentId);
-			return ($this->_adapter->isValidReturn($parentEquipId)) ? ($this->_getModuleEquipmentId($parentEquipId, $equipmentId)) : ($moduleId);
 		}
 
 		/**

@@ -36,4 +36,33 @@
 		{
 			return false;
 		}
+
+		/**
+		  * Return the parent equipment ID this is on
+		  *
+		  * @return false|int
+		  */
+		abstract public function getParentEquipmentId();
+
+		/**
+		  * Return the first top module equipment ID this is on
+		  *
+		  * @return false|int
+		  */
+		public function getModuleEquipmentId()
+		{
+			$parentEquipmentId = $this->getParentEquipmentId();
+			return ($parentEquipmentId !== false) ? ($this->_getModuleEquipmentId($parentEquipmentId)) : (false);
+		}
+
+		/**
+		  * Return the first top module equipment ID this is on
+		  *
+		  * @return int
+		  */
+		protected function _getModuleEquipmentId($equipmentId, $moduleId = false)
+		{
+			$parentEquipId = $this->_adapter->getParentEquipmentIdByEquipmentId($equipmentId);
+			return ($this->_adapter->isValidReturn($parentEquipId)) ? ($this->_getModuleEquipmentId($parentEquipId, $equipmentId)) : ($moduleId);
+		}
 	}
